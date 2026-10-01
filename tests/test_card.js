@@ -368,3 +368,26 @@ test("shows contextual care advice for the current plant status", () => {
   assert.match(html, /Vérifiez le substrat et arrosez si nécessaire/);
   assert.match(html, /mdi:lightbulb-outline/);
 });
+
+
+test("does not infer watering across an unavailable history sample", async () => {
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "OK", {
+        plant_name: "Monstera",
+        moisture: 50,
+        moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
+    callWS: () => Promise.resolve([[
+      { state: "20" },
+      { state: "unavailable" },
+      { state: "45" },
+    ]]),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.innerHTML, /Tendance sur 24 h/);
+  assert.doesNotMatch(card.innerHTML, /Hausse notable détectée/);
+});
