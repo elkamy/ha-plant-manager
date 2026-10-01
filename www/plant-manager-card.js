@@ -83,7 +83,7 @@ class PlantManagerCard extends HTMLElement {
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         entity_ids: [entityId],
-        minimal_response: true,
+        minimal_response: false,
         no_attributes: true,
       }).then((result) => {
         const samples = Array.isArray(result?.[0]) ? result[0] : [];
