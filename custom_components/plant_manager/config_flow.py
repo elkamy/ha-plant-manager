@@ -79,6 +79,9 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
                 self.hass.services.async_services().get("notify", {})
             )
         ]
+        configured_services = self.config_entry.options.get(CONF_NOTIFY_SERVICE, [])
+        if isinstance(configured_services, str):
+            configured_services = [configured_services] if configured_services else []
 
         schema = vol.Schema({
             vol.Required(
@@ -95,12 +98,12 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
             ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
             vol.Optional(
                 CONF_NOTIFY_SERVICE,
-                default=self.config_entry.options.get(CONF_NOTIFY_SERVICE, ""),
+                default=configured_services,
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=services,
                     mode=selector.SelectSelectorMode.DROPDOWN,
-                    custom_value=True,
+                    multiple=True,
                 )
             ),
             vol.Required(
