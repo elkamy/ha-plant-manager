@@ -75,6 +75,8 @@ test("renders valid moisture and watering summary", () => {
   assert.match(html, /Mon jardin/);
   assert.match(html, /23 %/);
   assert.match(html, /18%/);
+  assert.match(html, /battery low/);
+  assert.match(html, /mdi:battery-alert/);
   assert.match(html, /2 plantes suivies/);
   assert.match(html, /1 à arroser/);
   assert.ok(html.indexOf("Monstera") < html.indexOf("sensor.pachira_status"));
@@ -104,4 +106,25 @@ test("rejects unsafe image URL schemes", () => {
   });
   assert.doesNotMatch(html, /src="javascript:/);
   assert.match(html, /plant-icon/);
+});
+
+test("hides unavailable battery values and respects the configured low threshold", () => {
+  const html = renderCard({
+    "sensor.low_battery": plant("sensor.low_battery", "OK", {
+      plant_name: "Pothos",
+      moisture: 50,
+      battery: "unavailable",
+    }),
+    "sensor.normal_battery": plant("sensor.normal_battery", "OK", {
+      plant_name: "Ficus",
+      moisture: 50,
+      battery: "28",
+      battery_low_threshold: 20,
+    }),
+  });
+
+  assert.doesNotMatch(html, /unavailable/);
+  assert.match(html, /28%/);
+  assert.doesNotMatch(html, /battery low/);
+  assert.doesNotMatch(html, /mdi:battery-alert/);
 });
