@@ -19,7 +19,7 @@ Dans les options de chaque plante, sélectionnez un ou plusieurs services notify
 
 Le seuil de batterie faible est configurable dans les options de chaque plante. Par défaut, l'alerte se déclenche sous 25 % et se réarme à partir de 30 %. Les valeurs unknown, unavailable et non numériques sont ignorées.
 
-Le déclenchement de notification d'arrosage se fait au passage du seuil vers le bas, puis vérifie à nouveau l'humidité après le délai configuré.
+La notification d'arrosage se déclenche au passage du seuil vers le bas, puis vérifie à nouveau l'humidité après le délai configuré. Une seule notification est envoyée pendant un épisode de sol sec ; l'alerte se réarme lorsque l'humidité revient au seuil configuré ou au-dessus.
 
 Les seuils d'humidité sont génériques : adaptez-les aux besoins de chaque plante. Les valeurs du capteur de batterie doivent être exprimées en pourcentage.
 
