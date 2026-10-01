@@ -9,7 +9,7 @@ from homeassistant.helpers import selector
 from .const import (
     DOMAIN, CONF_PLANT_NAME, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY,
     CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD, CONF_NOTIFY_SERVICE, CONF_DELAY,
-    DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD, DEFAULT_DELAY,
+    CONF_IMAGE_URL, DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD, DEFAULT_DELAY,
 )
 
 
@@ -110,6 +110,10 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
                 CONF_DELAY,
                 default=self.config_entry.options.get(CONF_DELAY, DEFAULT_DELAY),
             ): vol.All(vol.Coerce(int), vol.Range(min=0, max=1440)),
+            vol.Optional(
+                CONF_IMAGE_URL,
+                default=self.config_entry.options.get(CONF_IMAGE_URL, ""),
+            ): str,
         })
         return self.async_show_form(
             step_id="init", data_schema=schema, errors=errors
