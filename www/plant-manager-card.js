@@ -131,7 +131,7 @@ class PlantManagerCard extends HTMLElement {
             <span class="moisture-label"><ha-icon icon="mdi:water-percent"></ha-icon> Humidité du sol</span>
             <strong class="moisture-value">${moistureText}</strong>
           </div>
-          <div class="progress-track" role="progressbar" aria-label="Humidité du sol" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${valid ? Math.round(percentage) : 0}">
+          <div class="progress-track" role="progressbar" aria-label="Humidité du sol" aria-valuemin="0" aria-valuemax="100" ${valid ? `aria-valuenow="${Math.round(percentage)}"` : 'aria-valuetext="Indisponible"'}>
             <div class="progress-fill ${tone}" style="width:${percentage}%"></div>
           </div>
           ${showBattery && battery ? `<div class="extras">${battery}</div>` : ""}
