@@ -128,6 +128,13 @@ class PlantStatusSensorTests(unittest.TestCase):
         self.assertEqual(sensor.native_value, "indisponible")
         self.assertFalse(sensor.available)
 
+    def test_out_of_range_moisture_is_unavailable(self):
+        for value in (-1, 101, 150):
+            with self.subTest(value=value):
+                sensor = self.make_sensor(value)
+                self.assertEqual(sensor.native_value, "indisponible")
+                self.assertFalse(sensor.available)
+
     def test_invalid_thresholds_fall_back_to_defaults(self):
         sensor = self.make_sensor(29, {"low_threshold": "invalid", "high_threshold": float("nan")})
         self.assertEqual(sensor.native_value, "à arroser")
