@@ -1,0 +1,29 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check Python syntax
+        run: python -m compileall -q custom_components/plant_manager
+
+      - name: Validate integration manifest
+        run: python -m json.tool custom_components/plant_manager/manifest.json > /dev/null
+
+      - name: Validate HACS metadata
+        run: python -m json.tool hacs.json > /dev/null
