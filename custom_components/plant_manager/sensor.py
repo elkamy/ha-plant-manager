@@ -47,7 +47,7 @@ class PlantStatusSensor(SensorEntity):
             value = float(state.state) if state else None
         except (ValueError, TypeError, OverflowError):
             return None
-        return value if value is not None and math.isfinite(value) else None
+        return value if value is not None and math.isfinite(value) and 0 <= value <= 100 else None
 
     @property
     def _low_threshold(self):
