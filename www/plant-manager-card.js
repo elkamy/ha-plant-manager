@@ -148,7 +148,7 @@ class PlantManagerCard extends HTMLElement {
     const healthy = countState("ok");
     const unavailable = countState("indisponible");
     const summary = plants.length
-      ? `<div class="summary"><span class="summary-dot"></span>${plants.length} plante${plants.length > 1 ? "s" : ""} affichée${plants.length > 1 ? "s" : ""}</div>`
+      ? `<div class="summary"><span class="summary-dot"></span>${plants.length} plante${plants.length > 1 ? "s" : ""} affichée${plants.length > 1 ? "s" : ""}${needsWater ? ` <span class="summary-alert">· ${needsWater} à arroser</span>` : ""}</div>`
       : "";
     const overview = plants.length
       ? `<div class="overview" aria-label="Résumé des plantes">
