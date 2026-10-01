@@ -6,6 +6,7 @@
 - Tri de la carte Lovelace par nom, humidité croissante ou statut de la plante.
 - Filtres Lovelace pour afficher toutes les plantes, uniquement celles à arroser ou celles nécessitant une attention particulière.
 - Option d'affichage compact pour réduire la hauteur de la carte.
+- Les lignes de plantes ouvrent leurs détails Home Assistant au toucher ou au clavier ; cette action peut être désactivée.
 - Options pour masquer les photos personnalisées et les indicateurs de batterie.
 - Tests automatisés couvrant les nouveaux modes de tri et d'affichage.
 
