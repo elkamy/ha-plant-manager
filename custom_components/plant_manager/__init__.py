@@ -9,6 +9,7 @@ from homeassistant.helpers.event import (
     async_track_state_change_event,
 )
 
+from .alerts import should_start_alert
 from .const import (
     DOMAIN, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY, CONF_LOW_THRESHOLD,
     CONF_BATTERY_LOW_THRESHOLD, CONF_NOTIFY_SERVICE, CONF_DELAY,
@@ -69,11 +70,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if current >= threshold:
             entry_data["moisture_alert_active"] = False
             return
-        if previous is not None and previous < threshold:
-            return
-        if (
-            entry_data["moisture_alert_active"]
-            or entry_data["moisture_alert_pending"]
+        if not should_start_alert(
+            current,
+            previous,
+            threshold,
+            entry_data["moisture_alert_active"],
+            entry_data["moisture_alert_pending"],
         ):
             return
 
@@ -166,11 +168,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 else:
                     return
 
-            if current >= threshold or (
-                previous is not None and previous < threshold
+            if not should_start_alert(
+                current,
+                previous,
+                threshold,
+                entry_data["battery_alert_active"],
+                entry_data["battery_alert_pending"],
             ):
-                return
-            if entry_data["battery_alert_pending"]:
                 return
 
             services = _get_notify_services()
