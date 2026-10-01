@@ -44,11 +44,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if current >= threshold or (previous is not None and previous < threshold):
             return
 
-        service = options.get(CONF_NOTIFY_SERVICE)
-        delay = max(0, int(options.get(CONF_DELAY, DEFAULT_DELAY)))
-        if not service or not service.startswith("notify.") or "." not in service:
-            _LOGGER.debug("Plant Manager: no valid notify service configured for %s", entry.title)
+        configured_services = options.get(CONF_NOTIFY_SERVICE, [])
+        if isinstance(configured_services, str):
+            configured_services = [configured_services] if configured_services else []
+        services = [
+            service for service in configured_services
+            if isinstance(service, str) and service.startswith("notify.") and "." in service
+        ]
+        if not services:
+            _LOGGER.debug(
+                "Plant Manager: no valid notify service configured for %s",
+                entry.title,
+            )
             return
+
+        delay = max(0, int(options.get(CONF_DELAY, DEFAULT_DELAY)))
 
         async def _send(_now):
             state = hass.states.get(moisture_entity)
@@ -60,21 +70,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return
             if moisture >= threshold:
                 return
-            domain, service_name = service.split(".", 1)
-            await hass.services.async_call(
-                domain,
-                service_name,
-                {
-                    "title": "🌱 Plante à arroser",
-                    "message": f"{entry.data.get(CONF_PLANT_NAME, entry.title)} a besoin d'eau. Humidité du sol : {moisture:g} %.",
-                },
-                blocking=False,
-            )
+
+            message = {
+                "title": "🌱 Plante à arroser",
+                "message": (
+                    f"{entry.data.get(CONF_PLANT_NAME, entry.title)} a besoin d'eau. "
+                    f"Humidité du sol : {moisture:g} %."
+                ),
+            }
+            for service in services:
+                domain, service_name = service.split(".", 1)
+                await hass.services.async_call(
+                    domain,
+                    service_name,
+                    message,
+                    blocking=False,
+                )
 
         from homeassistant.helpers.event import async_call_later
         async_call_later(hass, delay * 60, _send)
 
-    unsubscribe = async_track_state_change_event(hass, [moisture_entity], _handle_moisture_change)
+    unsubscribe = async_track_state_change_event(
+        hass, [moisture_entity], _handle_moisture_change
+    )
     hass.data[DOMAIN][entry.entry_id]["unsubscribe"] = unsubscribe
     entry.async_on_unload(unsubscribe)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
