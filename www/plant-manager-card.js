@@ -73,8 +73,11 @@ class PlantManagerCard extends HTMLElement {
     if (!this._historyCache) this._historyCache = new Map();
     if (!this._historyPending) this._historyPending = new Set();
     const requestHistory = (entityId) => {
-      if (!showHistory || !entityId || this._historyCache.has(entityId)
-        || this._historyPending.has(entityId) || typeof this._hass.callWS !== "function") return;
+      const cached = entityId ? this._historyCache.get(entityId) : null;
+      if (!showHistory || !entityId
+        || (cached && Date.now() - cached.fetchedAt < 15 * 60 * 1000)
+        || this._historyPending.has(entityId)
+        || typeof this._hass.callWS !== "function") return;
       this._historyPending.add(entityId);
       const end = new Date();
       const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
@@ -89,9 +92,9 @@ class PlantManagerCard extends HTMLElement {
         const samples = Array.isArray(result?.[0]) ? result[0] : [];
         const points = samples.map((sample) => Number(sample.state))
           .filter((value) => Number.isFinite(value) && value >= 0 && value <= 100);
-        this._historyCache.set(entityId, points);
+        this._historyCache.set(entityId, { points, fetchedAt: Date.now() });
       }).catch(() => {
-        this._historyCache.set(entityId, []);
+        this._historyCache.set(entityId, { points: [], fetchedAt: Date.now() });
       }).finally(() => {
         this._historyPending.delete(entityId);
         if (this.isConnected !== false) this.render();
@@ -167,7 +170,8 @@ class PlantManagerCard extends HTMLElement {
             ? "Rien à signaler pour le moment."
             : "Vérifiez le capteur et sa connexion.";
       requestHistory(historyEntity);
-      const history = showHistory && historyEntity ? this._historyCache.get(historyEntity) : null;
+      const historyEntry = showHistory && historyEntity ? this._historyCache.get(historyEntity) : null;
+      const history = historyEntry ? historyEntry.points : null;
       let historyMarkup = "";
       if (showHistory && Array.isArray(history) && history.length >= 2) {
         const min = Math.min(...history);
