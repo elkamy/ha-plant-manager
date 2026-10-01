@@ -16,8 +16,19 @@ class PlantManagerCard extends HTMLElement {
   render() {
     if (!this._hass) return;
 
-    const plants = Object.values(this._hass.states)
+    const allPlants = Object.values(this._hass.states)
       .filter((s) => s.attributes?.plant_manager === true);
+    const filterBy = ["all", "needs_water", "attention"].includes(this.config.filter_by)
+      ? this.config.filter_by
+      : "all";
+    const plants = allPlants.filter((plant) => {
+      const state = String(plant.state || "").toLocaleLowerCase("fr");
+      if (filterBy === "needs_water") return state === "à arroser";
+      if (filterBy === "attention") {
+        return state === "à arroser" || state === "très humide" || state === "indisponible";
+      }
+      return true;
+    });
 
     const sortBy = ["name", "moisture", "status"].includes(this.config.sort_by)
       ? this.config.sort_by
@@ -129,7 +140,7 @@ class PlantManagerCard extends HTMLElement {
 
     const needsWater = plants.filter((p) => String(p.state).toLocaleLowerCase("fr") === "à arroser").length;
     const summary = plants.length
-      ? `<div class="summary"><span class="summary-dot"></span>${plants.length} plante${plants.length > 1 ? "s" : ""} suivie${plants.length > 1 ? "s" : ""}${needsWater ? ` <span class="summary-alert">· ${needsWater} à arroser</span>` : ""}</div>`
+      ? `<div class="summary"><span class="summary-dot"></span>${plants.length} plante${plants.length > 1 ? "s" : ""} affichée${plants.length > 1 ? "s" : ""}${needsWater ? ` <span class="summary-alert">· ${needsWater} à arroser</span>` : ""}</div>`
       : "";
 
     this.innerHTML = `
@@ -142,7 +153,7 @@ class PlantManagerCard extends HTMLElement {
           </div>
         </div>
         <div class="content">
-          ${plants.length ? rows : '<div class="empty"><div class="empty-icon"><ha-icon icon="mdi:sprout-outline"></ha-icon></div><strong>Aucune plante pour le moment</strong><span>Ajoutez une plante dans Plant Manager pour commencer le suivi.</span></div>'}
+          ${plants.length ? rows : allPlants.length ? '<div class="empty"><div class="empty-icon"><ha-icon icon="mdi:filter-off-outline"></ha-icon></div><strong>Aucune plante correspondante</strong><span>Modifiez le filtre pour afficher d’autres plantes.</span></div>' : '<div class="empty"><div class="empty-icon"><ha-icon icon="mdi:sprout-outline"></ha-icon></div><strong>Aucune plante pour le moment</strong><span>Ajoutez une plante dans Plant Manager pour commencer le suivi.</span></div>'}
         </div>
       </ha-card>
       <style>
