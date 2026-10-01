@@ -40,7 +40,17 @@ Les seuils d'humidité sont génériques : adaptez-les aux besoins de chaque pla
 ```yaml
 type: custom:plant-manager-card
 title: Mes plantes
+sort_by: status # name (par défaut), moisture ou status
+show_images: true
+show_battery: true
 ```
+
+Options de la carte :
+- `sort_by: name` : tri alphabétique (par défaut).
+- `sort_by: moisture` : humidité croissante, les valeurs indisponibles en dernier.
+- `sort_by: status` : plantes à arroser en premier, puis très humides, en bonne santé et indisponibles.
+- `show_images: false` : masque les photos personnalisées.
+- `show_battery: false` : masque les indicateurs de batterie.
 
 La carte détecte les capteurs de statut créés par l'intégration.
 
