@@ -128,3 +128,45 @@ test("hides unavailable battery values and respects the configured low threshold
   assert.doesNotMatch(html, /battery low/);
   assert.doesNotMatch(html, /mdi:battery-alert/);
 });
+
+test("supports sorting plants by moisture with unavailable values last", () => {
+  const html = renderCard({
+    "sensor.monstera_status": plant("sensor.monstera_status", "OK", {
+      plant_name: "Monstera",
+      moisture: 55,
+    }),
+    "sensor.pachira_status": plant("sensor.pachira_status", "à arroser", {
+      plant_name: "Pachira",
+      moisture: 22,
+    }),
+    "sensor.ficus_status": plant("sensor.ficus_status", "indisponible", {
+      plant_name: "Ficus",
+      moisture: null,
+    }),
+  }, { sort_by: "moisture" });
+
+  assert.ok(html.indexOf("Pachira") < html.indexOf("Monstera"));
+  assert.ok(html.indexOf("Monstera") < html.indexOf("Ficus"));
+});
+
+test("supports sorting by plant status and hiding images and battery", () => {
+  const html = renderCard({
+    "sensor.monstera_status": plant("sensor.monstera_status", "OK", {
+      plant_name: "Monstera",
+      moisture: 55,
+      battery: 18,
+      image_url: "https://example.com/monstera.jpg",
+    }),
+    "sensor.pachira_status": plant("sensor.pachira_status", "à arroser", {
+      plant_name: "Pachira",
+      moisture: 22,
+      battery: 80,
+      image_url: "https://example.com/pachira.jpg",
+    }),
+  }, { sort_by: "status", show_images: false, show_battery: false });
+
+  assert.ok(html.indexOf("Pachira") < html.indexOf("Monstera"));
+  assert.doesNotMatch(html, /src="https:\/\/example\.com/);
+  assert.doesNotMatch(html, /18%|80%/);
+  assert.match(html, /plant-icon/);
+});
