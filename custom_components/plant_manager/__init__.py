@@ -162,7 +162,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 current = float(new_state.state)
             except (ValueError, TypeError, OverflowError):
                 return
-            if not math.isfinite(current):
+            if not math.isfinite(current) or not 0 <= current <= 100:
                 return
 
             previous = None
