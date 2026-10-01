@@ -23,7 +23,7 @@ class PlantStatusSensor(SensorEntity):
         self.hass = hass
         self.entry = entry
         self._attr_unique_id = f"{entry.entry_id}_status"
-        self._attr_name = f"{entry.data.get(CONF_PLANT_NAME, entry.title)} status"
+        self._attr_name = "Statut"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name=entry.data.get(CONF_PLANT_NAME, entry.title),
