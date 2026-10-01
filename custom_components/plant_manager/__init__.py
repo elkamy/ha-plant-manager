@@ -30,6 +30,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry_data = {
         "battery_alert_active": False,
         "battery_alert_pending": False,
+        "moisture_alert_active": False,
+        "moisture_alert_pending": False,
     }
     hass.data[DOMAIN][entry.entry_id] = entry_data
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -62,7 +64,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         threshold = float(
             entry.options.get(CONF_LOW_THRESHOLD, DEFAULT_LOW_THRESHOLD)
         )
-        if current >= threshold or (previous is not None and previous < threshold):
+
+        # A new dry-soil episode can alert only after moisture recovers.
+        if current >= threshold:
+            entry_data["moisture_alert_active"] = False
+            return
+        if previous is not None and previous < threshold:
+            return
+        if (
+            entry_data["moisture_alert_active"]
+            or entry_data["moisture_alert_pending"]
+        ):
             return
 
         services = _get_notify_services()
@@ -73,9 +85,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
             return
 
+        entry_data["moisture_alert_pending"] = True
         delay = max(0, int(entry.options.get(CONF_DELAY, DEFAULT_DELAY)))
 
         async def _send(_now):
+            entry_data["moisture_alert_pending"] = False
+            if entry_data["moisture_alert_active"]:
+                return
+
             state = hass.states.get(moisture_entity)
             if state is None:
                 return
@@ -83,9 +100,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 moisture = float(state.state)
             except (ValueError, TypeError):
                 return
-            if moisture >= threshold:
+
+            current_threshold = float(
+                entry.options.get(CONF_LOW_THRESHOLD, DEFAULT_LOW_THRESHOLD)
+            )
+            if moisture >= current_threshold:
                 return
 
+            # Mark the episode before sending to prevent duplicate alerts.
+            entry_data["moisture_alert_active"] = True
             message = {
                 "title": "🌱 Plante à arroser",
                 "message": (
