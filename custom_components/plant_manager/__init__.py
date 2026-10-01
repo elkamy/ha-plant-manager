@@ -58,9 +58,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return
         try:
             current = float(new_state.state)
-            previous = float(old_state.state) if old_state is not None else None
         except (ValueError, TypeError):
             return
+
+        previous = None
+        if old_state is not None:
+            try:
+                previous = float(old_state.state)
+            except (ValueError, TypeError):
+                pass
 
         threshold = float(
             entry.options.get(CONF_LOW_THRESHOLD, DEFAULT_LOW_THRESHOLD)
@@ -127,7 +133,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     blocking=False,
                 )
 
-        async_call_later(hass, delay * 60, _send)
+        cancel_pending = async_call_later(hass, delay * 60, _send)
+        entry.async_on_unload(cancel_pending)
 
     unsubscribe_moisture = async_track_state_change_event(
         hass, [moisture_entity], _handle_moisture_change
@@ -228,7 +235,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         blocking=False,
                     )
 
-            async_call_later(hass, delay * 60, _send_battery_alert)
+            cancel_pending = async_call_later(
+                hass, delay * 60, _send_battery_alert
+            )
+            entry.async_on_unload(cancel_pending)
 
         unsubscribe_battery = async_track_state_change_event(
             hass, [battery_entity], _handle_battery_change
