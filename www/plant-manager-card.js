@@ -100,14 +100,23 @@ class PlantManagerCard extends HTMLElement {
         // unknown/unavailable reading must break continuity, not create a
         // false jump between two measurements several hours apart.
         const sampleValues = samples.map(parseMoisture);
-        const points = sampleValues.filter(Number.isFinite);
+        const validSamples = samples
+          .map((sample, index) => ({
+            value: sampleValues[index],
+            timestamp: Date.parse(sample?.last_changed || sample?.last_updated || ""),
+          }))
+          .filter((sample) => Number.isFinite(sample.value));
+        const points = validSamples.map((sample) => sample.value);
+        const timestamps = validSamples.map((sample) => sample.timestamp);
         // A sudden increase can indicate watering, but moisture sensors can
         // also jump for other reasons; this is only a hint, never a confirmed event.
         const possibleWatering = sampleValues.some((value, index) =>
           index > 0 && Number.isFinite(value)
           && Number.isFinite(sampleValues[index - 1])
           && value - sampleValues[index - 1] >= 15);
-        this._historyCache.set(entityId, { points, possibleWatering, fetchedAt: Date.now() });
+        this._historyCache.set(entityId, {
+          points, timestamps, possibleWatering, fetchedAt: Date.now(),
+        });
       }).catch(() => {
         this._historyCache.set(entityId, { points: [], fetchedAt: Date.now() });
       }).finally(() => {
@@ -193,8 +202,18 @@ class PlantManagerCard extends HTMLElement {
         const min = Math.min(...history);
         const max = Math.max(...history);
         const range = Math.max(max - min, 1);
+        const timestamps = historyEntry.timestamps || [];
+        const hasUsableTimeline = timestamps.length === history.length
+          && timestamps.every(Number.isFinite)
+          && Math.max(...timestamps) > Math.min(...timestamps);
+        const firstTimestamp = hasUsableTimeline ? Math.min(...timestamps) : 0;
+        const timeRange = hasUsableTimeline
+          ? Math.max(...timestamps) - firstTimestamp
+          : 0;
         const points = history.map((value, index) => {
-          const x = history.length === 1 ? 0 : index * 100 / (history.length - 1);
+          const x = history.length === 1 ? 0 : hasUsableTimeline
+            ? (timestamps[index] - firstTimestamp) * 100 / timeRange
+            : index * 100 / (history.length - 1);
           const y = 28 - ((value - min) / range) * 22;
           return `${x.toFixed(1)},${y.toFixed(1)}`;
         }).join(" ");
