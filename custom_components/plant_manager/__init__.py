@@ -4,11 +4,16 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_state_change_event,
+)
 
 from .const import (
-    DOMAIN, CONF_MOISTURE_ENTITY, CONF_LOW_THRESHOLD, CONF_NOTIFY_SERVICE,
-    CONF_DELAY, CONF_PLANT_NAME, DEFAULT_LOW_THRESHOLD, DEFAULT_DELAY,
+    DOMAIN, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY, CONF_LOW_THRESHOLD,
+    CONF_BATTERY_LOW_THRESHOLD, CONF_NOTIFY_SERVICE, CONF_DELAY,
+    CONF_PLANT_NAME, DEFAULT_LOW_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD,
+    DEFAULT_DELAY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,10 +27,25 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = {}
+    entry_data = {
+        "battery_alert_active": False,
+        "battery_alert_pending": False,
+    }
+    hass.data[DOMAIN][entry.entry_id] = entry_data
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     moisture_entity = entry.data[CONF_MOISTURE_ENTITY]
+
+    def _get_notify_services() -> list[str]:
+        configured_services = entry.options.get(CONF_NOTIFY_SERVICE, [])
+        if isinstance(configured_services, str):
+            configured_services = [configured_services] if configured_services else []
+        return [
+            service for service in configured_services
+            if isinstance(service, str)
+            and service.startswith("notify.")
+            and "." in service
+        ]
 
     @callback
     def _handle_moisture_change(event):
@@ -39,18 +59,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except (ValueError, TypeError):
             return
 
-        options = entry.options
-        threshold = float(options.get(CONF_LOW_THRESHOLD, DEFAULT_LOW_THRESHOLD))
+        threshold = float(
+            entry.options.get(CONF_LOW_THRESHOLD, DEFAULT_LOW_THRESHOLD)
+        )
         if current >= threshold or (previous is not None and previous < threshold):
             return
 
-        configured_services = options.get(CONF_NOTIFY_SERVICE, [])
-        if isinstance(configured_services, str):
-            configured_services = [configured_services] if configured_services else []
-        services = [
-            service for service in configured_services
-            if isinstance(service, str) and service.startswith("notify.") and "." in service
-        ]
+        services = _get_notify_services()
         if not services:
             _LOGGER.debug(
                 "Plant Manager: no valid notify service configured for %s",
@@ -58,7 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
             return
 
-        delay = max(0, int(options.get(CONF_DELAY, DEFAULT_DELAY)))
+        delay = max(0, int(entry.options.get(CONF_DELAY, DEFAULT_DELAY)))
 
         async def _send(_now):
             state = hass.states.get(moisture_entity)
@@ -87,14 +102,113 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     blocking=False,
                 )
 
-        from homeassistant.helpers.event import async_call_later
         async_call_later(hass, delay * 60, _send)
 
-    unsubscribe = async_track_state_change_event(
+    unsubscribe_moisture = async_track_state_change_event(
         hass, [moisture_entity], _handle_moisture_change
     )
-    hass.data[DOMAIN][entry.entry_id]["unsubscribe"] = unsubscribe
-    entry.async_on_unload(unsubscribe)
+    entry_data["unsubscribe_moisture"] = unsubscribe_moisture
+    entry.async_on_unload(unsubscribe_moisture)
+
+    battery_entity = entry.data.get(CONF_BATTERY_ENTITY)
+    if battery_entity:
+        @callback
+        def _handle_battery_change(event):
+            new_state = event.data.get("new_state")
+            old_state = event.data.get("old_state")
+            if new_state is None:
+                return
+
+            try:
+                current = float(new_state.state)
+            except (ValueError, TypeError):
+                return
+
+            previous = None
+            if old_state is not None:
+                try:
+                    previous = float(old_state.state)
+                except (ValueError, TypeError):
+                    pass
+
+            threshold = float(
+                entry.options.get(
+                    CONF_BATTERY_LOW_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD
+                )
+            )
+            reset_threshold = min(threshold + 5, 100)
+            if entry_data["battery_alert_active"]:
+                if current >= reset_threshold:
+                    entry_data["battery_alert_active"] = False
+                else:
+                    return
+
+            if current >= threshold or (
+                previous is not None and previous < threshold
+            ):
+                return
+            if entry_data["battery_alert_pending"]:
+                return
+
+            services = _get_notify_services()
+            if not services:
+                _LOGGER.debug(
+                    "Plant Manager: no valid notify service configured for %s",
+                    entry.title,
+                )
+                return
+
+            entry_data["battery_alert_pending"] = True
+            delay = max(0, int(entry.options.get(CONF_DELAY, DEFAULT_DELAY)))
+
+            async def _send_battery_alert(_now):
+                entry_data["battery_alert_pending"] = False
+                if entry_data["battery_alert_active"]:
+                    return
+
+                state = hass.states.get(battery_entity)
+                if state is None:
+                    return
+                try:
+                    battery = float(state.state)
+                except (ValueError, TypeError):
+                    return
+                current_threshold = float(
+                    entry.options.get(
+                        CONF_BATTERY_LOW_THRESHOLD,
+                        DEFAULT_BATTERY_LOW_THRESHOLD,
+                    )
+                )
+                if battery >= current_threshold:
+                    return
+
+                entry_data["battery_alert_active"] = True
+                plant_name = entry.data.get(CONF_PLANT_NAME, entry.title)
+                message = {
+                    "title": f"🔋 Batterie faible — {plant_name}",
+                    "message": (
+                        f"Le capteur de {plant_name} n'a plus que "
+                        f"{battery:g} % de batterie. Pensez à remplacer "
+                        "ou recharger sa pile."
+                    ),
+                }
+                for service in services:
+                    domain, service_name = service.split(".", 1)
+                    await hass.services.async_call(
+                        domain,
+                        service_name,
+                        message,
+                        blocking=False,
+                    )
+
+            async_call_later(hass, delay * 60, _send_battery_alert)
+
+        unsubscribe_battery = async_track_state_change_event(
+            hass, [battery_entity], _handle_battery_change
+        )
+        entry_data["unsubscribe_battery"] = unsubscribe_battery
+        entry.async_on_unload(unsubscribe_battery)
+
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
