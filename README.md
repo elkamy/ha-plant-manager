@@ -51,7 +51,7 @@ Options de la carte :
 - `sort_by: status` : plantes à arroser en premier, puis très humides, en bonne santé et indisponibles.
 - `show_images: false` : masque les photos personnalisées.
 - `show_battery: false` : masque les indicateurs de batterie.
-- `show_history: true` : affiche une courbe de l'humidité du sol sur les dernières 24 heures (désactivé par défaut pour limiter les requêtes d'historique).
+- `show_history: true` : affiche une courbe de l'humidité du sol sur les dernières 24 heures (désactivé par défaut pour limiter les requêtes d'historique). Une hausse d'au moins 15 points entre deux mesures affiche un indice d'arrosage possible ; ce n'est pas une détection certaine.
 - La carte affiche aussi un conseil d'entretien lié au statut et, lorsque Home Assistant fournit l'horodatage du capteur, l'ancienneté de la dernière mesure.
 - `compact: true` : réduit les marges, les photos et l'espacement vertical pour afficher davantage de plantes à l'écran.
 - `tap_action: none` : désactive l'ouverture des détails au toucher (par défaut, toucher une plante ouvre sa fenêtre « Plus d'informations »).
