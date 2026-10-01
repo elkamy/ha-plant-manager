@@ -1,0 +1,107 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+const test = require("node:test");
+
+class FakeHTMLElement {}
+
+const registry = new Map();
+const windowStub = { customCards: [] };
+const context = {
+  HTMLElement: FakeHTMLElement,
+  customElements: {
+    define: (name, component) => registry.set(name, component),
+  },
+  window: windowStub,
+};
+
+vm.runInNewContext(
+  fs.readFileSync("www/plant-manager-card.js", "utf8"),
+  context,
+  { filename: "plant-manager-card.js" },
+);
+
+const PlantManagerCard = registry.get("plant-manager-card");
+
+function renderCard(states, config = {}) {
+  const card = new PlantManagerCard();
+  card.setConfig(config);
+  card.hass = { states };
+  return card.innerHTML;
+}
+
+function plant(entityId, state, attributes = {}) {
+  return {
+    entity_id: entityId,
+    state,
+    attributes: { plant_manager: true, plant_name: entityId, ...attributes },
+  };
+}
+
+test("registers the custom card with Home Assistant", () => {
+  assert.equal(typeof PlantManagerCard, "function");
+  assert.equal(windowStub.customCards[0].type, "plant-manager-card");
+});
+
+test("renders an empty state when no plants are configured", () => {
+  const html = renderCard({});
+  assert.match(html, /Aucune plante pour le moment/);
+  assert.match(html, /Mon jardin d’intérieur/);
+});
+
+test("shows unavailable moisture as unavailable, not zero percent", () => {
+  const html = renderCard({
+    "sensor.pachira_status": plant("sensor.pachira_status", "indisponible", {
+      moisture: null,
+    }),
+  });
+  assert.match(html, /Indisponible/);
+  assert.doesNotMatch(html, /0 %/);
+  assert.match(html, /aria-valuenow="0"/);
+});
+
+test("renders valid moisture and watering summary", () => {
+  const html = renderCard({
+    "sensor.pachira_status": plant("sensor.pachira_status", "à arroser", {
+      moisture: 22.6,
+      battery: "18",
+    }),
+    "sensor.monstera_status": plant("sensor.monstera_status", "OK", {
+      plant_name: "Monstera",
+      moisture: 55,
+    }),
+  }, { title: "Mon jardin" });
+
+  assert.match(html, /Mon jardin/);
+  assert.match(html, /23 %/);
+  assert.match(html, /18%/);
+  assert.match(html, /2 plantes suivies/);
+  assert.match(html, /1 à arroser/);
+  assert.ok(html.indexOf("Monstera") < html.indexOf("sensor.pachira_status"));
+});
+
+test("escapes plant names and titles before inserting HTML", () => {
+  const html = renderCard({
+    "sensor.test_status": plant("sensor.test_status", "OK", {
+      plant_name: '<img src=x onerror="alert(1)">',
+      moisture: 50,
+    }),
+  }, { title: '<script>alert("x")</script>' });
+
+  assert.doesNotMatch(html, /<script>alert/);
+  assert.doesNotMatch(html, /<img src=x onerror/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /&lt;img src=x/);
+});
+
+test("rejects unsafe image URL schemes", () => {
+  const html = renderCard({
+    "sensor.test_status": plant("sensor.test_status", "OK", {
+      plant_name: "Pachira",
+      moisture: 50,
+      image_url: "javascript:alert(1)",
+    }),
+  });
+  assert.doesNotMatch(html, /src="javascript:/);
+  assert.match(html, /plant-icon/);
+});
