@@ -9,7 +9,7 @@ Intégration personnalisée Home Assistant pour gérer des plantes d'intérieur 
 - Configurer un seuil d'arrosage, un seuil d'humidité élevée, un seuil de batterie faible, les services de notification et un délai.
 - Créer un capteur de statut par plante.
 - Afficher toutes les plantes configurées dans une carte Lovelace.
-- Envoyer une notification lorsque l'humidité passe sous le seuil d'arrosage.
+- Envoyer une notification lorsque l'humidité passe sous le seuil d'arrosage, avec une seule notification par épisode de sol sec.
 - Envoyer une notification lorsque la batterie passe sous le seuil configuré (25 % par défaut).
 - Éviter les notifications de batterie répétées tant que le niveau reste bas. L'alerte se réarme lorsque la batterie remonte à 5 points au-dessus du seuil (30 % par défaut).
 
@@ -19,7 +19,7 @@ Dans les options de chaque plante, sélectionnez un ou plusieurs services notify
 
 Le seuil de batterie faible est configurable dans les options de chaque plante. Par défaut, l'alerte se déclenche sous 25 % et se réarme à partir de 30 %. Les valeurs unknown, unavailable et non numériques sont ignorées.
 
-Le déclenchement de notification d'arrosage se fait au passage du seuil vers le bas, puis vérifie à nouveau l'humidité après le délai configuré.
+La notification d'arrosage se déclenche au passage du seuil vers le bas, puis vérifie à nouveau l'humidité après le délai configuré. Une seule notification est envoyée pendant un épisode de sol sec. L'alerte peut se déclencher à nouveau lorsque l'humidité revient au seuil configuré ou au-dessus, puis repasse en dessous.
 
 Les seuils d'humidité sont génériques : adaptez-les aux besoins de chaque plante. Les valeurs du capteur de batterie doivent être exprimées en pourcentage.
 
