@@ -4,6 +4,7 @@
 
 ### Ajouté
 - Tri de la carte Lovelace par nom, humidité croissante ou statut de la plante.
+- Filtres Lovelace pour afficher toutes les plantes, uniquement celles à arroser ou celles nécessitant une attention particulière.
 - Options pour masquer les photos personnalisées et les indicateurs de batterie.
 - Tests automatisés couvrant les nouveaux modes de tri et d'affichage.
 
