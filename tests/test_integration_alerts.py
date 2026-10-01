@@ -1,6 +1,5 @@
 """Integration-level tests for delayed plant alert callbacks using HA test doubles."""
 
-import asyncio
 import importlib.util
 import sys
 import types
@@ -143,7 +142,7 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         hass.states.values["sensor.pachira_soil_moisture"] = FakeState(25)
         callback = hass.state_change_callbacks["sensor.pachira_soil_moisture"]
 
-        callback({"data": {"old_state": FakeState(31), "new_state": FakeState(25)}})
+        callback(types.SimpleNamespace(data={"old_state": FakeState(31), "new_state": FakeState(25)}))
         self.assertEqual(len(hass.delayed_callbacks), 1)
 
         # The delayed callback must use the latest sensor value, not the old event.
@@ -172,6 +171,38 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         hass.states.values["sensor.pachira_battery"] = FakeState(40)
         await hass.fire_delayed()
         hass.services.async_call.assert_not_awaited()
+
+
+    async def test_moisture_alert_rearms_after_soil_recovers(self):
+        hass, _entry = await self.setup_integration()
+        entity_id = "sensor.pachira_soil_moisture"
+        hass.states.values[entity_id] = FakeState(25)
+        callback = hass.state_change_callbacks[entity_id]
+
+        callback(types.SimpleNamespace(data={"old_state": FakeState(31), "new_state": FakeState(25)}))
+        await hass.fire_delayed()
+        self.assertEqual(hass.services.async_call.await_count, 1)
+
+        callback(types.SimpleNamespace(data={"old_state": FakeState(25), "new_state": FakeState(35)}))
+        callback(types.SimpleNamespace(data={"old_state": FakeState(35), "new_state": FakeState(20)}))
+        self.assertEqual(len(hass.delayed_callbacks), 2)
+        hass.states.values[entity_id] = FakeState(20)
+        await hass.fire_delayed(index=1)
+        self.assertEqual(hass.services.async_call.await_count, 2)
+
+    async def test_repeated_dry_readings_do_not_schedule_duplicate_alerts(self):
+        hass, _entry = await self.setup_integration()
+        entity_id = "sensor.pachira_soil_moisture"
+        hass.states.values[entity_id] = FakeState(25)
+        callback = hass.state_change_callbacks[entity_id]
+
+        callback(types.SimpleNamespace(data={"old_state": FakeState(31), "new_state": FakeState(25)}))
+        callback(types.SimpleNamespace(data={"old_state": FakeState(25), "new_state": FakeState(24)}))
+        self.assertEqual(len(hass.delayed_callbacks), 1)
+
+    async def test_pending_notification_cancellation_is_registered_for_unload(self):
+        _hass, entry = await self.setup_integration()
+        self.assertGreaterEqual(len(entry.unload_callbacks), 3)
 
 
 if __name__ == "__main__":
