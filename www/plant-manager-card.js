@@ -92,7 +92,11 @@ class PlantManagerCard extends HTMLElement {
         const samples = Array.isArray(result?.[0]) ? result[0] : [];
         const points = samples.map((sample) => Number(sample.state))
           .filter((value) => Number.isFinite(value) && value >= 0 && value <= 100);
-        this._historyCache.set(entityId, { points, fetchedAt: Date.now() });
+        // A sudden increase can indicate watering, but moisture sensors can
+        // also jump for other reasons; this is only a hint, never a confirmed event.
+        const possibleWatering = points.some((value, index) =>
+          index > 0 && value - points[index - 1] >= 15);
+        this._historyCache.set(entityId, { points, possibleWatering, fetchedAt: Date.now() });
       }).catch(() => {
         this._historyCache.set(entityId, { points: [], fetchedAt: Date.now() });
       }).finally(() => {
@@ -184,11 +188,15 @@ class PlantManagerCard extends HTMLElement {
         }).join(" ");
         const trend = history[history.length - 1] - history[0];
         const trendText = trend > 2 ? "En hausse" : trend < -2 ? "En baisse" : "Stable";
+        const wateringHint = historyEntry.possibleWatering
+          ? '<div class="watering-hint"><ha-icon icon="mdi:water-plus-outline"></ha-icon> Hausse notable détectée : arrosage possible (estimation).</div>'
+          : "";
         historyMarkup = `<div class="history">
           <div class="history-heading"><span>Tendance sur 24 h</span><span>${trendText}</span></div>
           <svg viewBox="0 0 100 32" preserveAspectRatio="none" role="img" aria-label="Historique de l'humidité sur 24 heures : ${trendText.toLocaleLowerCase("fr")}">
             <polyline points="${points}" fill="none" stroke="var(--info-color, var(--primary-color))" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
           </svg>
+          ${wateringHint}
         </div>`;
       } else if (showHistory && Array.isArray(history)) {
         historyMarkup = '<div class="history history-empty">Historique insuffisant pour afficher la tendance.</div>';
@@ -403,6 +411,16 @@ class PlantManagerCard extends HTMLElement {
         .history-heading span:last-child { color: var(--primary-text-color); font-weight: 600; }
         .history svg { display: block; width: 100%; height: 24px; margin-top: 4px; overflow: visible; }
         .history-empty { color: var(--secondary-text-color); font-size: 10px; }
+        .watering-hint {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          margin-top: 6px;
+          color: var(--secondary-text-color);
+          font-size: 11px;
+          line-height: 1.35;
+        }
+        .watering-hint ha-icon { --mdc-icon-size: 14px; color: var(--info-color, var(--primary-color)); }
         .advice { display: flex; align-items: flex-start; gap: 5px; margin-top: 8px; color: var(--secondary-text-color); font-size: 11px; line-height: 1.4; }
         .advice ha-icon { --mdc-icon-size: 14px; flex: 0 0 auto; color: var(--primary-color); }
         .updated { margin-top: 4px; color: var(--disabled-text-color, var(--secondary-text-color)); font-size: 10px; }
