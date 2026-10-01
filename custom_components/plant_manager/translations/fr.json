@@ -20,11 +20,11 @@
     "step": {
       "init": {
         "title": "Réglages de la plante",
-        "description": "Configurez les seuils et les notifications. Le seuil d'humidité élevée doit être supérieur au seuil d'arrosage.",
+        "description": "Configurez les seuils et les notifications. Vous pouvez sélectionner plusieurs appareils destinataires. Le seuil d'humidité élevée doit être supérieur au seuil d'arrosage.",
         "data": {
           "low_threshold": "Seuil d'alerte d'arrosage (%)",
           "high_threshold": "Seuil de sol très humide (%)",
-          "notify_service": "Service de notification (ex. notify.mobile_app_telephone)",
+          "notify_service": "Appareils recevant les notifications",
           "delay_minutes": "Délai avant notification (minutes)"
         }
       }
