@@ -300,6 +300,29 @@ test("renders a 24-hour moisture trend when history is enabled and available", a
   assert.match(card.innerHTML, /En hausse/);
 });
 
+test("ignores unknown and unavailable states in moisture history", async () => {
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "OK", {
+        plant_name: "Monstera",
+        moisture: 50,
+        moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
+    callWS: () => Promise.resolve([[
+      { state: "unknown" },
+      { state: "unavailable" },
+      { state: "" },
+      { state: "50" },
+    ]]),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.innerHTML, /Historique insuffisant pour afficher la tendance/);
+  assert.doesNotMatch(card.innerHTML, /Hausse notable détectée/);
+});
+
 test("shows a qualified possible-watering hint after a notable moisture rise", async () => {
   const card = new PlantManagerCard();
   card.setConfig({ show_history: true });
