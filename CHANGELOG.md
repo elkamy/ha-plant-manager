@@ -15,7 +15,7 @@
 - Tests automatisés couvrant les nouveaux modes de tri et d'affichage.
 
 ### Fiabilité
-- L'historique d'humidité ignore les états vides, `unknown` et `unavailable` au lieu de les convertir en 0 %.
+- L'historique d'humidité ignore les états vides, `unknown` et `unavailable` au lieu de les convertir en 0 % ; ces états interrompent aussi la détection d'une hausse pour éviter de déduire un arrosage à travers une lacune de mesure.
 - Alertes d'arrosage et de batterie dédupliquées et vérifiées après le délai configuré.
 - Gestion renforcée des valeurs de capteurs invalides ou indisponibles ; les mesures d'humidité et de batterie hors plage 0–100 % sont ignorées.
 - Le capteur de statut considère également une humidité hors plage comme indisponible, en cohérence avec les alertes.
