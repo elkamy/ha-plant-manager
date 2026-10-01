@@ -90,16 +90,23 @@ class PlantManagerCard extends HTMLElement {
         no_attributes: true,
       }).then((result) => {
         const samples = Array.isArray(result?.[0]) ? result[0] : [];
-        const points = samples.map((sample) => {
+        const parseMoisture = (sample) => {
           const state = sample?.state;
           if (state === null || state === undefined || String(state).trim() === "") return NaN;
           const value = Number(state);
           return Number.isFinite(value) && value >= 0 && value <= 100 ? value : NaN;
-        }).filter(Number.isFinite);
+        };
+        // Keep invalid samples in the sequence while detecting a rise: an
+        // unknown/unavailable reading must break continuity, not create a
+        // false jump between two measurements several hours apart.
+        const sampleValues = samples.map(parseMoisture);
+        const points = sampleValues.filter(Number.isFinite);
         // A sudden increase can indicate watering, but moisture sensors can
         // also jump for other reasons; this is only a hint, never a confirmed event.
-        const possibleWatering = points.some((value, index) =>
-          index > 0 && value - points[index - 1] >= 15);
+        const possibleWatering = sampleValues.some((value, index) =>
+          index > 0 && Number.isFinite(value)
+          && Number.isFinite(sampleValues[index - 1])
+          && value - sampleValues[index - 1] >= 15);
         this._historyCache.set(entityId, { points, possibleWatering, fetchedAt: Date.now() });
       }).catch(() => {
         this._historyCache.set(entityId, { points: [], fetchedAt: Date.now() });
