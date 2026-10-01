@@ -148,6 +148,24 @@ class PlantManagerCard extends HTMLElement {
         ? `<span class="battery${batteryLow ? " low" : ""}"><ha-icon icon="mdi:${batteryLow ? "battery-alert" : "battery-medium"}"></ha-icon><span>${Math.round(batteryValue)}%</span></span>`
         : "";
       const historyEntity = a.moisture_entity;
+      const moistureSource = historyEntity ? this._hass.states[historyEntity] : null;
+      let updatedText = "";
+      const updatedAt = moistureSource?.last_updated || moistureSource?.last_changed;
+      if (updatedAt) {
+        const ageMinutes = Math.max(0, Math.floor((Date.now() - new Date(updatedAt).getTime()) / 60000));
+        const ageLabel = ageMinutes < 1 ? "à l’instant"
+          : ageMinutes < 60 ? `il y a ${ageMinutes} min`
+          : ageMinutes < 1440 ? `il y a ${Math.floor(ageMinutes / 60)} h`
+          : `il y a ${Math.floor(ageMinutes / 1440)} j`;
+        updatedText = `<div class="updated">Dernière mesure ${ageLabel}</div>`;
+      }
+      const advice = normalizedState === "à arroser"
+        ? "Vérifiez le substrat et arrosez si nécessaire."
+        : normalizedState === "très humide"
+          ? "Laissez le substrat sécher avant le prochain arrosage."
+          : normalizedState === "ok"
+            ? "Rien à signaler pour le moment."
+            : "Vérifiez le capteur et sa connexion.";
       requestHistory(historyEntity);
       const history = showHistory && historyEntity ? this._historyCache.get(historyEntity) : null;
       let historyMarkup = "";
@@ -192,6 +210,8 @@ class PlantManagerCard extends HTMLElement {
           </div>
           ${showBattery && battery ? `<div class="extras">${battery}</div>` : ""}
           ${historyMarkup}
+          <div class="advice"><ha-icon icon="mdi:lightbulb-outline"></ha-icon><span>${advice}</span></div>
+          ${updatedText}
         </div>
       </article>`;
     }).join("");
@@ -379,6 +399,9 @@ class PlantManagerCard extends HTMLElement {
         .history-heading span:last-child { color: var(--primary-text-color); font-weight: 600; }
         .history svg { display: block; width: 100%; height: 24px; margin-top: 4px; overflow: visible; }
         .history-empty { color: var(--secondary-text-color); font-size: 10px; }
+        .advice { display: flex; align-items: flex-start; gap: 5px; margin-top: 8px; color: var(--secondary-text-color); font-size: 11px; line-height: 1.4; }
+        .advice ha-icon { --mdc-icon-size: 14px; flex: 0 0 auto; color: var(--primary-color); }
+        .updated { margin-top: 4px; color: var(--disabled-text-color, var(--secondary-text-color)); font-size: 10px; }
         .compact .history { margin-top: 6px; padding: 5px 7px 3px; }
         .compact .history svg { height: 18px; }
         .extras { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
