@@ -411,3 +411,25 @@ test("does not render a broken age label for an invalid sensor timestamp", () =>
   assert.doesNotMatch(html, /NaN/);
   assert.doesNotMatch(html, /Dernière mesure/);
 });
+
+
+test("plots moisture history using elapsed time when timestamps are available", async () => {
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "OK", {
+        plant_name: "Monstera",
+        moisture: 40,
+        moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
+    callWS: () => Promise.resolve([[
+      { state: "20", last_changed: "2026-10-01T00:00:00Z" },
+      { state: "30", last_changed: "2026-10-01T01:00:00Z" },
+      { state: "40", last_changed: "2026-10-01T10:00:00Z" },
+    ]]),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.innerHTML, /points="0\.0,28\.0 10\.0,17\.0 100\.0,6\.0"/);
+});
