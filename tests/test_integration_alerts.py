@@ -155,7 +155,7 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         hass.states.values["sensor.pachira_soil_moisture"] = FakeState(25)
         callback = hass.state_change_callbacks["sensor.pachira_soil_moisture"]
 
-        callback({"data": {"old_state": FakeState(31), "new_state": FakeState(25)}})
+        callback(types.SimpleNamespace(data={"old_state": FakeState(31), "new_state": FakeState(25)}))
         await hass.fire_delayed()
         hass.services.async_call.assert_awaited_once()
         self.assertEqual(hass.services.async_call.await_args.args[:2], ("notify", "mobile_app_phone"))
@@ -165,7 +165,7 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         hass.states.values["sensor.pachira_battery"] = FakeState(20)
         callback = hass.state_change_callbacks["sensor.pachira_battery"]
 
-        callback({"data": {"old_state": FakeState(30), "new_state": FakeState(20)}})
+        callback(types.SimpleNamespace(data={"old_state": FakeState(30), "new_state": FakeState(20)}))
         self.assertEqual(len(hass.delayed_callbacks), 1)
 
         hass.states.values["sensor.pachira_battery"] = FakeState(40)
