@@ -1,0 +1,19 @@
+# Journal des modifications
+
+## [0.2.4] — 2026-10-01
+
+### Ajouté
+- Tri de la carte Lovelace par nom, humidité croissante ou statut de la plante.
+- Options pour masquer les photos personnalisées et les indicateurs de batterie.
+- Tests automatisés couvrant les nouveaux modes de tri et d'affichage.
+
+### Fiabilité
+- Alertes d'arrosage et de batterie dédupliquées et vérifiées après le délai configuré.
+- Gestion renforcée des valeurs de capteurs invalides ou indisponibles.
+- Carte Lovelace plus robuste face aux valeurs d'humidité et de batterie invalides, aux noms HTML et aux URL d'image non sûres.
+- Validation automatisée Python et JavaScript dans GitHub Actions.
+
+### Documentation
+- Documentation des options de la carte et des paramètres de notification.
+
+> Avant de publier cette version, valider le comportement dans une instance de développement Home Assistant.
