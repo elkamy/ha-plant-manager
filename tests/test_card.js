@@ -213,3 +213,23 @@ test("shows a dedicated empty state when no plant matches the filter", () => {
   assert.match(html, /Aucune plante correspondante/);
   assert.doesNotMatch(html, /Aucune plante pour le moment/);
 });
+
+
+test("supports compact display mode", () => {
+  const normal = renderCard({
+    "sensor.pachira_status": plant("sensor.pachira_status", "OK", {
+      plant_name: "Pachira",
+      moisture: 50,
+    }),
+  });
+  const compact = renderCard({
+    "sensor.pachira_status": plant("sensor.pachira_status", "OK", {
+      plant_name: "Pachira",
+      moisture: 50,
+    }),
+  }, { compact: true });
+
+  assert.match(normal, /<ha-card class="">/);
+  assert.match(compact, /<ha-card class="compact">/);
+  assert.match(compact, /\.compact \.plant \{ gap: 10px; padding: 8px 3px; \}/);
+});
