@@ -65,7 +65,38 @@ class PlantManagerCard extends HTMLElement {
     });
     const showImages = this.config.show_images !== false;
     const showBattery = this.config.show_battery !== false;
+    const showHistory = this.config.show_history === true;
     const compact = this.config.compact === true;
+
+    // Cache history per entity so ordinary Home Assistant state updates do not
+    // trigger repeated history requests while the card is being rendered.
+    if (!this._historyCache) this._historyCache = new Map();
+    if (!this._historyPending) this._historyPending = new Set();
+    const requestHistory = (entityId) => {
+      if (!showHistory || !entityId || this._historyCache.has(entityId)
+        || this._historyPending.has(entityId) || typeof this._hass.callWS !== "function") return;
+      this._historyPending.add(entityId);
+      const end = new Date();
+      const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+      this._hass.callWS({
+        type: "history/history_during_period",
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        entity_ids: [entityId],
+        minimal_response: true,
+        no_attributes: true,
+      }).then((result) => {
+        const samples = Array.isArray(result?.[0]) ? result[0] : [];
+        const points = samples.map((sample) => Number(sample.state))
+          .filter((value) => Number.isFinite(value) && value >= 0 && value <= 100);
+        this._historyCache.set(entityId, points);
+      }).catch(() => {
+        this._historyCache.set(entityId, []);
+      }).finally(() => {
+        this._historyPending.delete(entityId);
+        if (this.isConnected !== false) this.render();
+      });
+    };
     const tapAction = this.config.tap_action === "none" ? "none" : "more-info";
 
     const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
@@ -116,6 +147,30 @@ class PlantManagerCard extends HTMLElement {
       const battery = batteryValid
         ? `<span class="battery${batteryLow ? " low" : ""}"><ha-icon icon="mdi:${batteryLow ? "battery-alert" : "battery-medium"}"></ha-icon><span>${Math.round(batteryValue)}%</span></span>`
         : "";
+      const historyEntity = a.moisture_entity;
+      requestHistory(historyEntity);
+      const history = showHistory && historyEntity ? this._historyCache.get(historyEntity) : null;
+      let historyMarkup = "";
+      if (showHistory && Array.isArray(history) && history.length >= 2) {
+        const min = Math.min(...history);
+        const max = Math.max(...history);
+        const range = Math.max(max - min, 1);
+        const points = history.map((value, index) => {
+          const x = history.length === 1 ? 0 : index * 100 / (history.length - 1);
+          const y = 28 - ((value - min) / range) * 22;
+          return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(" ");
+        const trend = history[history.length - 1] - history[0];
+        const trendText = trend > 2 ? "En hausse" : trend < -2 ? "En baisse" : "Stable";
+        historyMarkup = `<div class="history">
+          <div class="history-heading"><span>Tendance sur 24 h</span><span>${trendText}</span></div>
+          <svg viewBox="0 0 100 32" preserveAspectRatio="none" role="img" aria-label="Historique de l'humidité sur 24 heures : ${trendText.toLocaleLowerCase("fr")}">
+            <polyline points="${points}" fill="none" stroke="var(--info-color, var(--primary-color))" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+          </svg>
+        </div>`;
+      } else if (showHistory && Array.isArray(history)) {
+        historyMarkup = '<div class="history history-empty">Historique insuffisant pour afficher la tendance.</div>';
+      }
       const imageUrl = showImages ? safeImageUrl(a.image_url) : "";
       const image = imageUrl
         ? `<img class="plant-image" src="${esc(imageUrl)}" alt="${esc(a.plant_name || "Plante")}" loading="lazy">`
@@ -136,6 +191,7 @@ class PlantManagerCard extends HTMLElement {
             <div class="progress-fill ${tone}" style="width:${percentage}%"></div>
           </div>
           ${showBattery && battery ? `<div class="extras">${battery}</div>` : ""}
+          ${historyMarkup}
         </div>
       </article>`;
     }).join("");
@@ -318,6 +374,13 @@ class PlantManagerCard extends HTMLElement {
         .progress-fill.dry { background: var(--error-color, #c62828); }
         .progress-fill.wet { background: var(--warning-color, #b7791f); }
         .progress-fill.neutral { background: var(--disabled-text-color, #9e9e9e); }
+        .history { margin-top: 9px; padding: 7px 9px 4px; border-radius: 9px; background: var(--secondary-background-color); }
+        .history-heading { display: flex; justify-content: space-between; gap: 8px; color: var(--secondary-text-color); font-size: 10px; }
+        .history-heading span:last-child { color: var(--primary-text-color); font-weight: 600; }
+        .history svg { display: block; width: 100%; height: 24px; margin-top: 4px; overflow: visible; }
+        .history-empty { color: var(--secondary-text-color); font-size: 10px; }
+        .compact .history { margin-top: 6px; padding: 5px 7px 3px; }
+        .compact .history svg { height: 18px; }
         .extras { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
         .battery { display: inline-flex; align-items: center; gap: 4px; color: var(--secondary-text-color); font-size: 11px; }
         .battery.low { color: var(--error-color, #c62828); font-weight: 700; }
