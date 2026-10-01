@@ -20,7 +20,7 @@
     "step": {
       "init": {
         "title": "Réglages de la plante",
-        "description": "Configurez les seuils et les notifications.",
+        "description": "Configurez les seuils et les notifications. Le seuil d'humidité élevée doit être supérieur au seuil d'arrosage.",
         "data": {
           "low_threshold": "Seuil d'alerte d'arrosage (%)",
           "high_threshold": "Seuil de sol très humide (%)",
@@ -28,6 +28,9 @@
           "delay_minutes": "Délai avant notification (minutes)"
         }
       }
+    },
+    "error": {
+      "invalid_thresholds": "Le seuil d'humidité élevée doit être supérieur au seuil d'arrosage."
     }
   }
 }
