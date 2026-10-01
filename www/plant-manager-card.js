@@ -82,7 +82,7 @@ class PlantManagerCard extends HTMLElement {
       const a = plant.attributes;
       const hasMoisture = a.moisture !== null && a.moisture !== undefined && a.moisture !== "";
       const moisture = hasMoisture ? Number(a.moisture) : NaN;
-      const valid = Number.isFinite(moisture);
+      const valid = Number.isFinite(moisture) && moisture >= 0 && moisture <= 100;
       const normalizedState = String(plant.state || "").toLocaleLowerCase("fr");
       let label = "Indisponible";
       let tone = "neutral";
@@ -140,9 +140,23 @@ class PlantManagerCard extends HTMLElement {
       </article>`;
     }).join("");
 
-    const needsWater = plants.filter((p) => String(p.state).toLocaleLowerCase("fr") === "à arroser").length;
+    const countState = (state) => plants.filter(
+      (p) => String(p.state || "").toLocaleLowerCase("fr") === state,
+    ).length;
+    const needsWater = countState("à arroser");
+    const veryWet = countState("très humide");
+    const healthy = countState("ok");
+    const unavailable = countState("indisponible");
     const summary = plants.length
-      ? `<div class="summary"><span class="summary-dot"></span>${plants.length} plante${plants.length > 1 ? "s" : ""} affichée${plants.length > 1 ? "s" : ""}${needsWater ? ` <span class="summary-alert">· ${needsWater} à arroser</span>` : ""}</div>`
+      ? `<div class="summary"><span class="summary-dot"></span>${plants.length} plante${plants.length > 1 ? "s" : ""} affichée${plants.length > 1 ? "s" : ""}</div>`
+      : "";
+    const overview = plants.length
+      ? `<div class="overview" aria-label="Résumé des plantes">
+          <div class="overview-item dry"><span class="overview-count">${needsWater}</span><span>À arroser</span></div>
+          <div class="overview-item wet"><span class="overview-count">${veryWet}</span><span>Très humides</span></div>
+          <div class="overview-item good"><span class="overview-count">${healthy}</span><span>En forme</span></div>
+          <div class="overview-item neutral"><span class="overview-count">${unavailable}</span><span>Indisponibles</span></div>
+        </div>`
       : "";
 
     this.innerHTML = `
@@ -154,6 +168,7 @@ class PlantManagerCard extends HTMLElement {
             ${summary}
           </div>
         </div>
+        ${overview}
         <div class="content">
           ${plants.length ? rows : allPlants.length ? '<div class="empty"><div class="empty-icon"><ha-icon icon="mdi:filter-off-outline"></ha-icon></div><strong>Aucune plante correspondante</strong><span>Modifiez le filtre pour afficher d’autres plantes.</span></div>' : '<div class="empty"><div class="empty-icon"><ha-icon icon="mdi:sprout-outline"></ha-icon></div><strong>Aucune plante pour le moment</strong><span>Ajoutez une plante dans Plant Manager pour commencer le suivi.</span></div>'}
         </div>
@@ -202,6 +217,38 @@ class PlantManagerCard extends HTMLElement {
           background: var(--success-color, #2e7d32);
         }
         .summary-alert { color: var(--error-color, #c62828); font-weight: 600; }
+        .overview {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 8px;
+          padding: 0 18px 16px;
+        }
+        .overview-item {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 3px;
+          padding: 10px 8px;
+          border-radius: 12px;
+          background: var(--secondary-background-color);
+          color: var(--secondary-text-color);
+          font-size: 10px;
+          line-height: 1.25;
+          text-align: center;
+        }
+        .overview-count {
+          color: var(--primary-text-color);
+          font-size: 20px;
+          font-weight: 750;
+          font-variant-numeric: tabular-nums;
+          line-height: 1.1;
+        }
+        .overview-item.dry .overview-count { color: var(--error-color, #c62828); }
+        .overview-item.wet .overview-count { color: var(--warning-color, #b7791f); }
+        .overview-item.good .overview-count { color: var(--success-color, #2e7d32); }
+        .compact .overview { gap: 5px; padding: 0 14px 10px; }
+        .compact .overview-item { padding: 7px 4px; font-size: 9px; }
+        .compact .overview-count { font-size: 17px; }
         .compact .card-header { gap: 9px; padding: 12px 14px 10px; }
         .compact .header-icon { width: 36px; height: 36px; flex-basis: 36px; border-radius: 12px; }
         .compact .header-icon ha-icon { --mdc-icon-size: 21px; }
@@ -281,6 +328,9 @@ class PlantManagerCard extends HTMLElement {
         .empty strong { color: var(--primary-text-color); font-size: 14px; }
         .empty span { max-width: 260px; color: var(--secondary-text-color); font-size: 12px; line-height: 1.5; }
         @media (max-width: 420px) {
+          .overview { gap: 5px; padding-right: 12px; padding-left: 12px; }
+          .overview-item { padding: 8px 3px; font-size: 9px; }
+          .overview-count { font-size: 18px; }
           .plant { gap: 10px; }
           .photo { width: 54px; height: 54px; flex-basis: 54px; border-radius: 14px; }
           .plant-heading { align-items: flex-start; flex-direction: column; gap: 5px; }
