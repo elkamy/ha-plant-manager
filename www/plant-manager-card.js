@@ -90,8 +90,12 @@ class PlantManagerCard extends HTMLElement {
         no_attributes: true,
       }).then((result) => {
         const samples = Array.isArray(result?.[0]) ? result[0] : [];
-        const points = samples.map((sample) => Number(sample.state))
-          .filter((value) => Number.isFinite(value) && value >= 0 && value <= 100);
+        const points = samples.map((sample) => {
+          const state = sample?.state;
+          if (state === null || state === undefined || String(state).trim() === "") return NaN;
+          const value = Number(state);
+          return Number.isFinite(value) && value >= 0 && value <= 100 ? value : NaN;
+        }).filter(Number.isFinite);
         // A sudden increase can indicate watering, but moisture sensors can
         // also jump for other reasons; this is only a hint, never a confirmed event.
         const possibleWatering = points.some((value, index) =>
