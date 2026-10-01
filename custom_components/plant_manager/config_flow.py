@@ -55,7 +55,7 @@ class PlantManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        return PlantManagerOptionsFlow(config_entry)
+        return PlantManagerOptionsFlow()
 
 
 class PlantManagerOptionsFlow(config_entries.OptionsFlow):
