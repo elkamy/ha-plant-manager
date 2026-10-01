@@ -57,7 +57,8 @@ test("shows unavailable moisture as unavailable, not zero percent", () => {
   });
   assert.match(html, /Indisponible/);
   assert.doesNotMatch(html, /0 %/);
-  assert.match(html, /aria-valuenow="0"/);
+  assert.doesNotMatch(html, /aria-valuenow="0"/);
+  assert.match(html, /aria-valuetext="Indisponible"/);
 });
 
 test("renders valid moisture and watering summary", () => {
