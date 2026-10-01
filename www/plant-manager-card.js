@@ -24,6 +24,14 @@ class PlantManagerCard extends HTMLElement {
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
 
+    const safeImageUrl = (value) => {
+      const url = String(value || "").trim();
+      if (/^https?:\/\//i.test(url) || url.startsWith("/local/") || url.startsWith("/api/")) {
+        return url;
+      }
+      return "";
+    };
+
     const rows = plants.map((plant) => {
       const a = plant.attributes;
       const moisture = Number(a.moisture);
@@ -36,8 +44,12 @@ class PlantManagerCard extends HTMLElement {
       const battery = a.battery !== null && a.battery !== undefined
         ? `<span class="battery">Batterie : ${esc(a.battery)}${String(a.battery).match(/^\d+(\.\d+)?$/) ? "%" : ""}</span>`
         : "";
+      const imageUrl = safeImageUrl(a.image_url);
+      const image = imageUrl
+        ? `<img class="plant-image" src="${esc(imageUrl)}" alt="${esc(a.plant_name || "Plante")}" loading="lazy">`
+        : '<div class="plant-icon">🌿</div>';
       return `<div class="plant">
-        <div class="plant-icon">🌿</div>
+        ${image}
         <div class="details">
           <div class="name">${esc(a.plant_name || plant.entity_id)}</div>
           <div class="meta">${valid ? `Humidité du sol : ${Math.round(moisture)} %` : "Humidité indisponible"} ${battery}</div>
@@ -56,7 +68,9 @@ class PlantManagerCard extends HTMLElement {
         .content { padding: 0 16px 12px; }
         .plant { display:flex; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid var(--divider-color); }
         .plant:last-child { border-bottom:0; }
-        .plant-icon { font-size:25px; }
+        .plant-icon, .plant-image { width:52px; height:52px; flex:0 0 52px; border-radius:8px; }
+        .plant-icon { display:flex; align-items:center; justify-content:center; font-size:25px; background:var(--secondary-background-color); }
+        .plant-image { object-fit:cover; }
         .details { flex:1; min-width:0; }
         .name { font-weight:600; color:var(--primary-text-color); }
         .meta { font-size:12px; color:var(--secondary-text-color); margin-top:4px; }
