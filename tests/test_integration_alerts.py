@@ -55,7 +55,13 @@ class FakeHass:
     def add_state_listener(self, entity_ids, callback):
         for entity_id in entity_ids:
             self.state_change_callbacks[entity_id] = callback
-        return lambda: None
+
+        def unsubscribe():
+            for entity_id in entity_ids:
+                if self.state_change_callbacks.get(entity_id) is callback:
+                    self.state_change_callbacks.pop(entity_id, None)
+
+        return unsubscribe
 
     def schedule(self, delay, callback):
         self.delayed_callbacks.append(callback)
@@ -215,8 +221,32 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         callback(types.SimpleNamespace(data={"old_state": FakeState(31), "new_state": FakeState(25)}))
 
         self.assertFalse(hass.cancelled_delayed[0]["cancelled"])
-        entry.unload_callbacks[-1]()
+        for unload_callback in entry.unload_callbacks:
+            unload_callback()
         self.assertTrue(hass.cancelled_delayed[0]["cancelled"])
+        self.assertNotIn(entity_id, hass.state_change_callbacks)
+
+    async def test_reloading_entry_replaces_state_listener_without_stacking(self):
+        hass, entry = await self.setup_integration()
+        entity_id = "sensor.pachira_soil_moisture"
+        old_callback = hass.state_change_callbacks[entity_id]
+
+        for unload_callback in entry.unload_callbacks:
+            unload_callback()
+        self.assertNotIn(entity_id, hass.state_change_callbacks)
+
+        reloaded_entry = self.make_entry()
+        await INTEGRATION.async_setup_entry(hass, reloaded_entry)
+        new_callback = hass.state_change_callbacks[entity_id]
+
+        self.assertIsNot(old_callback, new_callback)
+        self.assertEqual(
+            sum(
+                callback is new_callback
+                for callback in hass.state_change_callbacks.values()
+            ),
+            1,
+        )
 
 
 if __name__ == "__main__":
