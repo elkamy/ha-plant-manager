@@ -3,7 +3,9 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const test = require("node:test");
 
-class FakeHTMLElement {}
+class FakeHTMLElement {
+  querySelectorAll() { return []; }
+}
 
 const registry = new Map();
 const windowStub = { customCards: [] };
@@ -233,4 +235,20 @@ test("supports compact display mode", () => {
   assert.match(normal, /<ha-card class="">/);
   assert.match(compact, /<ha-card class="compact">/);
   assert.match(compact, /\.compact \.plant \{ gap: 10px; padding: 8px 3px; \}/);
+});
+
+test("makes plant rows keyboard-accessible and supports disabling tap actions", () => {
+  const states = {
+    "sensor.pachira_status": plant("sensor.pachira_status", "OK", {
+      plant_name: "Pachira",
+      moisture: 50,
+    }),
+  };
+  const clickable = renderCard(states);
+  const inert = renderCard(states, { tap_action: "none" });
+
+  assert.match(clickable, /role="button" aria-label="Afficher les détails de Pachira"/);
+  assert.match(clickable, /tabindex="0"/);
+  assert.match(inert, /tabindex="-1"/);
+  assert.doesNotMatch(inert, /role="button"/);
 });
