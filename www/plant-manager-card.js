@@ -56,9 +56,17 @@ class PlantManagerCard extends HTMLElement {
 
       const percentage = valid ? Math.max(0, Math.min(100, moisture)) : 0;
       const moistureText = valid ? `${Math.round(moisture)} %` : "Indisponible";
-      const batteryValue = a.battery !== null && a.battery !== undefined && a.battery !== "";
-      const battery = batteryValue
-        ? `<span class="battery"><ha-icon icon="mdi:battery-medium"></ha-icon><span>${esc(a.battery)}${String(a.battery).match(/^\d+(\.\d+)?$/) ? "%" : ""}</span></span>`
+      const hasBattery = a.battery !== null && a.battery !== undefined && a.battery !== "";
+      const batteryValue = hasBattery ? Number(a.battery) : NaN;
+      const batteryValid = Number.isFinite(batteryValue) && batteryValue >= 0 && batteryValue <= 100;
+      const batteryThresholdValue = Number(a.battery_low_threshold);
+      const batteryThreshold = Number.isFinite(batteryThresholdValue)
+        && batteryThresholdValue >= 0 && batteryThresholdValue <= 100
+        ? batteryThresholdValue
+        : 25;
+      const batteryLow = batteryValid && batteryValue < batteryThreshold;
+      const battery = batteryValid
+        ? `<span class="battery${batteryLow ? " low" : ""}"><ha-icon icon="mdi:${batteryLow ? "battery-alert" : "battery-medium"}"></ha-icon><span>${Math.round(batteryValue)}%</span></span>`
         : "";
       const imageUrl = safeImageUrl(a.image_url);
       const image = imageUrl
@@ -203,6 +211,7 @@ class PlantManagerCard extends HTMLElement {
         .progress-fill.neutral { background: var(--disabled-text-color, #9e9e9e); }
         .extras { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
         .battery { display: inline-flex; align-items: center; gap: 4px; color: var(--secondary-text-color); font-size: 11px; }
+        .battery.low { color: var(--error-color, #c62828); font-weight: 700; }
         .battery ha-icon { --mdc-icon-size: 14px; }
         .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 12px 30px; text-align: center; }
         .empty-icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 3px; border-radius: 18px; color: var(--success-color, #2e7d32); background: var(--secondary-background-color); }
