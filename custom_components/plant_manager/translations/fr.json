@@ -26,7 +26,8 @@
           "high_threshold": "Seuil de sol très humide (%)",
           "notify_service": "Appareils recevant les notifications",
           "delay_minutes": "Délai avant notification (minutes)",
-          "image_url": "URL de l'image de la plante (facultatif)"
+          "image_url": "URL de l'image de la plante (facultatif)",
+          "battery_low_threshold": "Seuil d'alerte de batterie faible (%)"
         }
       }
     },
