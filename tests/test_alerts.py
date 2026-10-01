@@ -1,6 +1,18 @@
+import importlib.util
 import unittest
+from pathlib import Path
 
-from custom_components.plant_manager.alerts import should_start_alert
+
+HELPER_PATH = (
+    Path(__file__).parents[1]
+    / "custom_components"
+    / "plant_manager"
+    / "alerts.py"
+)
+SPEC = importlib.util.spec_from_file_location("plant_manager_alerts", HELPER_PATH)
+ALERTS = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(ALERTS)
+should_start_alert = ALERTS.should_start_alert
 
 
 class ShouldStartAlertTests(unittest.TestCase):
