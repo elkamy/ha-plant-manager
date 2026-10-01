@@ -1,0 +1,33 @@
+{
+  "title": "Plant Manager",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ajouter une plante",
+        "description": "Ajoutez une plante et sélectionnez ses capteurs.",
+        "data": {
+          "plant_name": "Nom de la plante",
+          "moisture_entity": "Capteur d'humidité du sol",
+          "battery_entity": "Capteur de batterie (facultatif)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Ce capteur d'humidité est déjà associé à une plante."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Réglages de la plante",
+        "description": "Configurez les seuils et les notifications.",
+        "data": {
+          "low_threshold": "Seuil d'alerte d'arrosage (%)",
+          "high_threshold": "Seuil de sol très humide (%)",
+          "notify_service": "Service de notification (ex. notify.mobile_app_telephone)",
+          "delay_minutes": "Délai avant notification (minutes)"
+        }
+      }
+    }
+  }
+}
