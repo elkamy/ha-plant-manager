@@ -1,7 +1,6 @@
 class PlantManagerCard extends HTMLElement {
   setConfig(config) {
     this.config = config || {};
-    this.innerHTML = "";
     this.render();
   }
 
@@ -16,6 +15,7 @@ class PlantManagerCard extends HTMLElement {
 
   render() {
     if (!this._hass) return;
+
     const plants = Object.values(this._hass.states)
       .filter((s) => s.attributes?.plant_manager === true)
       .sort((a, b) => (a.attributes.plant_name || "").localeCompare(b.attributes.plant_name || "", "fr"));
@@ -26,9 +26,7 @@ class PlantManagerCard extends HTMLElement {
 
     const safeImageUrl = (value) => {
       const url = String(value || "").trim();
-      if (/^https?:\/\//i.test(url) || url.startsWith("/local/") || url.startsWith("/api/")) {
-        return url;
-      }
+      if (/^https?:\/\//i.test(url) || url.startsWith("/local/") || url.startsWith("/api/")) return url;
       return "";
     };
 
@@ -36,47 +34,186 @@ class PlantManagerCard extends HTMLElement {
       const a = plant.attributes;
       const moisture = Number(a.moisture);
       const valid = Number.isFinite(moisture);
-      let label = plant.state || "indisponible";
-      let color = "#64748b";
-      if (label === "à arroser") color = "#dc2626";
-      else if (label === "OK") color = "#16a34a";
-      else if (label === "très humide") color = "#d97706";
-      const battery = a.battery !== null && a.battery !== undefined
-        ? `<span class="battery">Batterie : ${esc(a.battery)}${String(a.battery).match(/^\d+(\.\d+)?$/) ? "%" : ""}</span>`
+      const normalizedState = String(plant.state || "").toLocaleLowerCase("fr");
+      let label = "Indisponible";
+      let tone = "neutral";
+      let icon = "mdi:help-circle-outline";
+
+      if (normalizedState === "à arroser") {
+        label = "À arroser";
+        tone = "dry";
+        icon = "mdi:water-alert-outline";
+      } else if (normalizedState === "ok") {
+        label = "En bonne santé";
+        tone = "good";
+        icon = "mdi:check-circle-outline";
+      } else if (normalizedState === "très humide") {
+        label = "Très humide";
+        tone = "wet";
+        icon = "mdi:water";
+      }
+
+      const percentage = valid ? Math.max(0, Math.min(100, moisture)) : 0;
+      const moistureText = valid ? `${Math.round(moisture)} %` : "Indisponible";
+      const batteryValue = a.battery !== null && a.battery !== undefined && a.battery !== "";
+      const battery = batteryValue
+        ? `<span class="battery"><ha-icon icon="mdi:battery-medium"></ha-icon><span>${esc(a.battery)}${String(a.battery).match(/^\d+(\.\d+)?$/) ? "%" : ""}</span></span>`
         : "";
       const imageUrl = safeImageUrl(a.image_url);
       const image = imageUrl
         ? `<img class="plant-image" src="${esc(imageUrl)}" alt="${esc(a.plant_name || "Plante")}" loading="lazy">`
-        : '<div class="plant-icon">🌿</div>';
-      return `<div class="plant">
-        ${image}
+        : '<div class="plant-icon"><ha-icon icon="mdi:flower"></ha-icon></div>';
+
+      return `<article class="plant">
+        <div class="photo">${image}</div>
         <div class="details">
-          <div class="name">${esc(a.plant_name || plant.entity_id)}</div>
-          <div class="meta">${valid ? `Humidité du sol : ${Math.round(moisture)} %` : "Humidité indisponible"} ${battery}</div>
+          <div class="plant-heading">
+            <div class="name" title="${esc(a.plant_name || plant.entity_id)}">${esc(a.plant_name || plant.entity_id)}</div>
+            <span class="status ${tone}"><ha-icon icon="${icon}"></ha-icon>${label}</span>
+          </div>
+          <div class="moisture-line">
+            <span class="moisture-label"><ha-icon icon="mdi:water-percent"></ha-icon> Humidité du sol</span>
+            <strong class="moisture-value">${moistureText}</strong>
+          </div>
+          <div class="progress-track" role="progressbar" aria-label="Humidité du sol" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${valid ? Math.round(percentage) : 0}">
+            <div class="progress-fill ${tone}" style="width:${percentage}%"></div>
+          </div>
+          ${battery ? `<div class="extras">${battery}</div>` : ""}
         </div>
-        <div class="status" style="color:${color}">${esc(label)}</div>
-      </div>`;
+      </article>`;
     }).join("");
 
+    const needsWater = plants.filter((p) => String(p.state).toLocaleLowerCase("fr") === "à arroser").length;
+    const summary = plants.length
+      ? `<div class="summary"><span class="summary-dot"></span>${plants.length} plante${plants.length > 1 ? "s" : ""} suivie${plants.length > 1 ? "s" : ""}${needsWater ? ` <span class="summary-alert">· ${needsWater} à arroser</span>` : ""}</div>`
+      : "";
+
     this.innerHTML = `
-      <ha-card header="${esc(this.config.title || "Mes plantes")}">
+      <ha-card>
+        <div class="card-header">
+          <div class="header-icon"><ha-icon icon="mdi:leaf"></ha-icon></div>
+          <div class="header-text">
+            <div class="title">${esc(this.config.title || "Mon jardin d’intérieur")}</div>
+            ${summary}
+          </div>
+        </div>
         <div class="content">
-          ${plants.length ? rows : '<div class="empty">Aucune plante configurée dans Plant Manager.</div>'}
+          ${plants.length ? rows : '<div class="empty"><div class="empty-icon"><ha-icon icon="mdi:sprout-outline"></ha-icon></div><strong>Aucune plante pour le moment</strong><span>Ajoutez une plante dans Plant Manager pour commencer le suivi.</span></div>'}
         </div>
       </ha-card>
       <style>
-        .content { padding: 0 16px 12px; }
-        .plant { display:flex; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid var(--divider-color); }
-        .plant:last-child { border-bottom:0; }
-        .plant-icon, .plant-image { width:52px; height:52px; flex:0 0 52px; border-radius:8px; }
-        .plant-icon { display:flex; align-items:center; justify-content:center; font-size:25px; background:var(--secondary-background-color); }
-        .plant-image { object-fit:cover; }
-        .details { flex:1; min-width:0; }
-        .name { font-weight:600; color:var(--primary-text-color); }
-        .meta { font-size:12px; color:var(--secondary-text-color); margin-top:4px; }
-        .battery { margin-left:8px; }
-        .status { font-size:13px; font-weight:600; text-align:right; }
-        .empty { padding:18px 0; color:var(--secondary-text-color); }
+        ha-card {
+          overflow: hidden;
+          border-radius: var(--ha-card-border-radius, 16px);
+        }
+        .card-header {
+          display: flex;
+          align-items: center;
+          gap: 13px;
+          padding: 20px 18px 16px;
+        }
+        .header-icon {
+          display: grid;
+          place-items: center;
+          width: 46px;
+          height: 46px;
+          flex: 0 0 46px;
+          border-radius: 15px;
+          color: var(--success-color, #2e7d32);
+          background: color-mix(in srgb, var(--success-color, #2e7d32) 12%, var(--card-background-color));
+        }
+        .header-icon ha-icon { --mdc-icon-size: 26px; }
+        .header-text { min-width: 0; }
+        .title {
+          color: var(--primary-text-color);
+          font-size: 20px;
+          font-weight: 700;
+          letter-spacing: -0.3px;
+          line-height: 1.25;
+        }
+        .summary {
+          margin-top: 5px;
+          color: var(--secondary-text-color);
+          font-size: 12px;
+        }
+        .summary-dot {
+          display: inline-block;
+          width: 7px;
+          height: 7px;
+          margin: 0 6px 1px 0;
+          border-radius: 50%;
+          background: var(--success-color, #2e7d32);
+        }
+        .summary-alert { color: var(--error-color, #c62828); font-weight: 600; }
+        .content { padding: 0 14px 8px; }
+        .plant {
+          display: flex;
+          align-items: center;
+          gap: 13px;
+          padding: 14px 4px;
+          border-top: 1px solid var(--divider-color);
+        }
+        .photo {
+          width: 68px;
+          height: 68px;
+          flex: 0 0 68px;
+          overflow: hidden;
+          border-radius: 17px;
+          background: var(--secondary-background-color);
+        }
+        .plant-image { display: block; width: 100%; height: 100%; object-fit: cover; }
+        .plant-icon { display: grid; place-items: center; width: 100%; height: 100%; color: var(--success-color, #2e7d32); }
+        .plant-icon ha-icon { --mdc-icon-size: 34px; }
+        .details { flex: 1; min-width: 0; }
+        .plant-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .name {
+          overflow: hidden;
+          color: var(--primary-text-color);
+          font-size: 15px;
+          font-weight: 700;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .status {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          flex: 0 0 auto;
+          padding: 5px 8px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+        .status ha-icon { --mdc-icon-size: 14px; }
+        .status.good { color: var(--success-color, #2e7d32); background: color-mix(in srgb, var(--success-color, #2e7d32) 12%, var(--card-background-color)); }
+        .status.dry { color: var(--error-color, #c62828); background: color-mix(in srgb, var(--error-color, #c62828) 12%, var(--card-background-color)); }
+        .status.wet { color: var(--warning-color, #b7791f); background: color-mix(in srgb, var(--warning-color, #b7791f) 14%, var(--card-background-color)); }
+        .status.neutral { color: var(--secondary-text-color); background: var(--secondary-background-color); }
+        .moisture-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 11px; }
+        .moisture-label { display: inline-flex; align-items: center; gap: 5px; color: var(--secondary-text-color); font-size: 12px; }
+        .moisture-label ha-icon { --mdc-icon-size: 15px; }
+        .moisture-value { color: var(--primary-text-color); font-size: 12px; font-variant-numeric: tabular-nums; }
+        .progress-track { height: 6px; overflow: hidden; margin-top: 7px; border-radius: 999px; background: var(--divider-color); }
+        .progress-fill { height: 100%; border-radius: inherit; transition: width 300ms ease; }
+        .progress-fill.good { background: var(--success-color, #2e7d32); }
+        .progress-fill.dry { background: var(--error-color, #c62828); }
+        .progress-fill.wet { background: var(--warning-color, #b7791f); }
+        .progress-fill.neutral { background: var(--disabled-text-color, #9e9e9e); }
+        .extras { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .battery { display: inline-flex; align-items: center; gap: 4px; color: var(--secondary-text-color); font-size: 11px; }
+        .battery ha-icon { --mdc-icon-size: 14px; }
+        .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 12px 30px; text-align: center; }
+        .empty-icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 3px; border-radius: 18px; color: var(--success-color, #2e7d32); background: var(--secondary-background-color); }
+        .empty-icon ha-icon { --mdc-icon-size: 28px; }
+        .empty strong { color: var(--primary-text-color); font-size: 14px; }
+        .empty span { max-width: 260px; color: var(--secondary-text-color); font-size: 12px; line-height: 1.5; }
+        @media (max-width: 420px) {
+          .plant { gap: 10px; }
+          .photo { width: 54px; height: 54px; flex-basis: 54px; border-radius: 14px; }
+          .plant-heading { align-items: flex-start; flex-direction: column; gap: 5px; }
+          .status { padding: 4px 7px; }
+        }
       </style>`;
   }
 }
@@ -87,5 +224,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "plant-manager-card",
   name: "Plant Manager",
-  description: "Affiche automatiquement les plantes configurées dans Plant Manager."
+  description: "Affiche les plantes avec leur humidité, leur statut et leur batterie."
 });
