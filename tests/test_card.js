@@ -299,3 +299,11 @@ test("renders a 24-hour moisture trend when history is enabled and available", a
   assert.match(card.innerHTML, /Tendance sur 24 h/);
   assert.match(card.innerHTML, /En hausse/);
 });
+
+test("shows contextual care advice for the current plant status", () => {
+  const html = renderCard({
+    "sensor.dry": plant("sensor.dry", "à arroser", { plant_name: "Pachira", moisture: 20 }),
+  });
+  assert.match(html, /Vérifiez le substrat et arrosez si nécessaire/);
+  assert.match(html, /mdi:lightbulb-outline/);
+});
