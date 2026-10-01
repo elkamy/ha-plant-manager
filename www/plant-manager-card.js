@@ -66,6 +66,7 @@ class PlantManagerCard extends HTMLElement {
     const showImages = this.config.show_images !== false;
     const showBattery = this.config.show_battery !== false;
     const compact = this.config.compact === true;
+    const tapAction = this.config.tap_action === "none" ? "none" : "more-info";
 
     const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -120,7 +121,7 @@ class PlantManagerCard extends HTMLElement {
         ? `<img class="plant-image" src="${esc(imageUrl)}" alt="${esc(a.plant_name || "Plante")}" loading="lazy">`
         : '<div class="plant-icon"><ha-icon icon="mdi:flower"></ha-icon></div>';
 
-      return `<article class="plant">
+      return `<article class="plant" data-entity-id="${esc(plant.entity_id)}" tabindex="${tapAction === "none" ? "-1" : "0"}" ${tapAction === "none" ? "" : `role="button" aria-label="Afficher les détails de ${esc(a.plant_name || plant.entity_id)}"`}>
         <div class="photo">${image}</div>
         <div class="details">
           <div class="plant-heading">
@@ -221,6 +222,8 @@ class PlantManagerCard extends HTMLElement {
           padding: 14px 4px;
           border-top: 1px solid var(--divider-color);
         }
+        .plant[role="button"] { cursor: pointer; }
+        .plant[role="button"]:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -2px; border-radius: 10px; }
         .photo {
           width: 68px;
           height: 68px;
@@ -284,6 +287,24 @@ class PlantManagerCard extends HTMLElement {
           .status { padding: 4px 7px; }
         }
       </style>`;
+    if (tapAction !== "none") {
+      this.querySelectorAll(".plant[role=button]").forEach((row) => {
+        const showDetails = () => {
+          this.dispatchEvent(new CustomEvent("hass-more-info", {
+            detail: { entityId: row.dataset.entityId },
+            bubbles: true,
+            composed: true,
+          }));
+        };
+        row.addEventListener("click", showDetails);
+        row.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            showDetails();
+          }
+        });
+      });
+    }
   }
 }
 
