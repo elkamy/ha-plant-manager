@@ -51,6 +51,7 @@ Options de la carte :
 - `sort_by: status` : plantes à arroser en premier, puis très humides, en bonne santé et indisponibles.
 - `show_images: false` : masque les photos personnalisées.
 - `show_battery: false` : masque les indicateurs de batterie.
+- `compact: true` : réduit les marges, les photos et l'espacement vertical pour afficher davantage de plantes à l'écran.
 - `filter_by: all` : affiche toutes les plantes (par défaut).
 - `filter_by: needs_water` : affiche uniquement les plantes à arroser.
 - `filter_by: attention` : affiche les plantes à arroser, très humides ou indisponibles.
