@@ -25,10 +25,10 @@ vm.runInNewContext(
 
 const PlantManagerCard = registry.get("plant-manager-card");
 
-function renderCard(states, config = {}) {
+function renderCard(states, config = {}, hassExtras = {}) {
   const card = new PlantManagerCard();
   card.setConfig(config);
-  card.hass = { states };
+  card.hass = { states, ...hassExtras };
   return card.innerHTML;
 }
 
@@ -280,4 +280,19 @@ test("does not display out-of-range moisture as a valid progress value", () => {
   assert.doesNotMatch(html, /aria-valuenow="100"/);
   assert.match(html, /aria-valuetext="Indisponible"/);
   assert.match(html, /width:0%/);
+});
+
+test("renders a 24-hour moisture trend when history is enabled and available", async () => {
+  const states = {
+    "sensor.plant_status": plant("sensor.plant_status", "OK", {
+      plant_name: "Monstera",
+      moisture: 50,
+      moisture_entity: "sensor.monstera_moisture",
+    }),
+  };
+  const htmlBeforeHistory = renderCard(states, { show_history: true }, {
+    callWS: () => Promise.resolve([[{ state: "25" }, { state: "35" }, { state: "50" }]]),
+  });
+  assert.match(htmlBeforeHistory, /Tendance sur 24 h/);
+  assert.match(htmlBeforeHistory, /En hausse/);
 });
