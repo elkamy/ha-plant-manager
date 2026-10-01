@@ -77,7 +77,7 @@ test("renders valid moisture and watering summary", () => {
   assert.match(html, /18%/);
   assert.match(html, /battery low/);
   assert.match(html, /mdi:battery-alert/);
-  assert.match(html, /2 plantes suivies/);
+  assert.match(html, /2 plantes affichées/);
   assert.match(html, /1 à arroser/);
   assert.ok(html.indexOf("Monstera") < html.indexOf("sensor.pachira_status"));
 });
