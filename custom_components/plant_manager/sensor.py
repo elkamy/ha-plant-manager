@@ -7,7 +7,8 @@ from homeassistant.helpers.entity import DeviceInfo
 
 from .const import (
     DOMAIN, CONF_PLANT_NAME, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY,
-    CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD, DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD,
+    CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD, CONF_IMAGE_URL,
+    DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD,
 )
 
 
@@ -72,6 +73,7 @@ class PlantStatusSensor(SensorEntity):
             "battery": battery_state.state if battery_state else None,
             "low_threshold": low,
             "high_threshold": high,
+            "image_url": self.entry.options.get(CONF_IMAGE_URL, ""),
         }
 
     @property
