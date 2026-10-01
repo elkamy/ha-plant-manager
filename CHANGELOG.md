@@ -12,7 +12,8 @@
 
 ### Fiabilité
 - Alertes d'arrosage et de batterie dédupliquées et vérifiées après le délai configuré.
-- Gestion renforcée des valeurs de capteurs invalides ou indisponibles.
+- Gestion renforcée des valeurs de capteurs invalides ou indisponibles ; les mesures d'humidité et de batterie hors plage 0–100 % sont ignorées.
+- Tests supplémentaires sur le réarmement des alertes de batterie après récupération.
 - Carte Lovelace plus robuste face aux valeurs d'humidité et de batterie invalides, aux noms HTML et aux URL d'image non sûres.
 - Amélioration de l'accessibilité : une humidité indisponible n'est plus annoncée comme une valeur de 0 %.
 - Validation automatisée Python et JavaScript dans GitHub Actions.
