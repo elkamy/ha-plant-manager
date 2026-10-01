@@ -20,7 +20,7 @@
 - Gestion renforcée des valeurs de capteurs invalides ou indisponibles ; les mesures d'humidité et de batterie hors plage 0–100 % sont ignorées.
 - Le capteur de statut considère également une humidité hors plage comme indisponible, en cohérence avec les alertes.
 - Tests supplémentaires sur le réarmement des alertes de batterie après récupération.
-- Carte Lovelace plus robuste face aux valeurs d'humidité et de batterie invalides, aux noms HTML et aux URL d'image non sûres.
+- Carte Lovelace plus robuste face aux valeurs d'humidité et de batterie invalides, aux noms HTML, aux URL d'image non sûres et aux horodatages de capteur invalides.
 - Les valeurs d'humidité hors plage 0–100 % ne sont pas utilisées pour remplir la jauge de la carte.
 - Amélioration de l'accessibilité : une humidité indisponible n'est plus annoncée comme une valeur de 0 %.
 - Validation automatisée Python et JavaScript dans GitHub Actions.
