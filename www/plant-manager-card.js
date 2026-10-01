@@ -65,6 +65,7 @@ class PlantManagerCard extends HTMLElement {
     });
     const showImages = this.config.show_images !== false;
     const showBattery = this.config.show_battery !== false;
+    const compact = this.config.compact === true;
 
     const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -144,7 +145,7 @@ class PlantManagerCard extends HTMLElement {
       : "";
 
     this.innerHTML = `
-      <ha-card>
+      <ha-card class="${compact ? "compact" : ""}">
         <div class="card-header">
           <div class="header-icon"><ha-icon icon="mdi:leaf"></ha-icon></div>
           <div class="header-text">
@@ -200,6 +201,18 @@ class PlantManagerCard extends HTMLElement {
           background: var(--success-color, #2e7d32);
         }
         .summary-alert { color: var(--error-color, #c62828); font-weight: 600; }
+        .compact .card-header { gap: 9px; padding: 12px 14px 10px; }
+        .compact .header-icon { width: 36px; height: 36px; flex-basis: 36px; border-radius: 12px; }
+        .compact .header-icon ha-icon { --mdc-icon-size: 21px; }
+        .compact .title { font-size: 17px; }
+        .compact .content { padding: 0 10px 4px; }
+        .compact .plant { gap: 10px; padding: 8px 3px; }
+        .compact .photo { width: 48px; height: 48px; flex-basis: 48px; border-radius: 12px; }
+        .compact .plant-icon ha-icon { --mdc-icon-size: 26px; }
+        .compact .name { font-size: 14px; }
+        .compact .moisture-line { margin-top: 6px; }
+        .compact .progress-track { height: 4px; margin-top: 5px; }
+        .compact .extras { margin-top: 5px; }
         .content { padding: 0 14px 8px; }
         .plant {
           display: flex;
