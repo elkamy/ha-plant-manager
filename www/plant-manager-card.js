@@ -32,7 +32,8 @@ class PlantManagerCard extends HTMLElement {
 
     const rows = plants.map((plant) => {
       const a = plant.attributes;
-      const moisture = Number(a.moisture);
+      const hasMoisture = a.moisture !== null && a.moisture !== undefined && a.moisture !== "";
+      const moisture = hasMoisture ? Number(a.moisture) : NaN;
       const valid = Number.isFinite(moisture);
       const normalizedState = String(plant.state || "").toLocaleLowerCase("fr");
       let label = "Indisponible";
