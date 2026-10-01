@@ -46,8 +46,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         service = options.get(CONF_NOTIFY_SERVICE)
         delay = max(0, int(options.get(CONF_DELAY, DEFAULT_DELAY)))
-        if not service or "." not in service:
-            _LOGGER.debug("Plant Manager: no notification service configured for %s", entry.title)
+        if not service or not service.startswith("notify.") or "." not in service:
+            _LOGGER.debug("Plant Manager: no valid notify service configured for %s", entry.title)
             return
 
         async def _send(_now):
