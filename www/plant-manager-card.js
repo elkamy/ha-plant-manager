@@ -169,8 +169,9 @@ class PlantManagerCard extends HTMLElement {
       const moistureSource = historyEntity ? this._hass.states[historyEntity] : null;
       let updatedText = "";
       const updatedAt = moistureSource?.last_updated || moistureSource?.last_changed;
-      if (updatedAt) {
-        const ageMinutes = Math.max(0, Math.floor((Date.now() - new Date(updatedAt).getTime()) / 60000));
+      const updatedTimestamp = updatedAt ? new Date(updatedAt).getTime() : NaN;
+      if (Number.isFinite(updatedTimestamp)) {
+        const ageMinutes = Math.max(0, Math.floor((Date.now() - updatedTimestamp) / 60000));
         const ageLabel = ageMinutes < 1 ? "à l’instant"
           : ageMinutes < 60 ? `il y a ${ageMinutes} min`
           : ageMinutes < 1440 ? `il y a ${Math.floor(ageMinutes / 60)} h`
