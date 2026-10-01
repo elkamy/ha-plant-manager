@@ -17,8 +17,43 @@ class PlantManagerCard extends HTMLElement {
     if (!this._hass) return;
 
     const plants = Object.values(this._hass.states)
-      .filter((s) => s.attributes?.plant_manager === true)
-      .sort((a, b) => (a.attributes.plant_name || "").localeCompare(b.attributes.plant_name || "", "fr"));
+      .filter((s) => s.attributes?.plant_manager === true);
+
+    const sortBy = ["name", "moisture", "status"].includes(this.config.sort_by)
+      ? this.config.sort_by
+      : "name";
+    const statusOrder = { "à arroser": 0, "très humide": 1, ok: 2, indisponible: 3 };
+    const moistureOf = (plant) => {
+      const value = plant.attributes?.moisture;
+      if (value === null || value === undefined || value === "") return NaN;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : NaN;
+    };
+    plants.sort((a, b) => {
+      if (sortBy === "moisture") {
+        const moistureA = moistureOf(a);
+        const moistureB = moistureOf(b);
+        if (Number.isFinite(moistureA) !== Number.isFinite(moistureB)) {
+          return Number.isFinite(moistureA) ? -1 : 1;
+        }
+        if (Number.isFinite(moistureA) && moistureA !== moistureB) {
+          return moistureA - moistureB;
+        }
+      } else if (sortBy === "status") {
+        const stateA = String(a.state || "").toLocaleLowerCase("fr");
+        const stateB = String(b.state || "").toLocaleLowerCase("fr");
+        const orderA = statusOrder[stateA] ?? 3;
+        const orderB = statusOrder[stateB] ?? 3;
+        if (orderA !== orderB) return orderA - orderB;
+      }
+
+      return (a.attributes.plant_name || "").localeCompare(
+        b.attributes.plant_name || "",
+        "fr",
+      );
+    });
+    const showImages = this.config.show_images !== false;
+    const showBattery = this.config.show_battery !== false;
 
     const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -68,7 +103,7 @@ class PlantManagerCard extends HTMLElement {
       const battery = batteryValid
         ? `<span class="battery${batteryLow ? " low" : ""}"><ha-icon icon="mdi:${batteryLow ? "battery-alert" : "battery-medium"}"></ha-icon><span>${Math.round(batteryValue)}%</span></span>`
         : "";
-      const imageUrl = safeImageUrl(a.image_url);
+      const imageUrl = showImages ? safeImageUrl(a.image_url) : "";
       const image = imageUrl
         ? `<img class="plant-image" src="${esc(imageUrl)}" alt="${esc(a.plant_name || "Plante")}" loading="lazy">`
         : '<div class="plant-icon"><ha-icon icon="mdi:flower"></ha-icon></div>';
@@ -87,7 +122,7 @@ class PlantManagerCard extends HTMLElement {
           <div class="progress-track" role="progressbar" aria-label="Humidité du sol" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${valid ? Math.round(percentage) : 0}">
             <div class="progress-fill ${tone}" style="width:${percentage}%"></div>
           </div>
-          ${battery ? `<div class="extras">${battery}</div>` : ""}
+          ${showBattery && battery ? `<div class="extras">${battery}</div>` : ""}
         </div>
       </article>`;
     }).join("");
