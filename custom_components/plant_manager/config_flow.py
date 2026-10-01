@@ -8,8 +8,9 @@ from homeassistant.helpers import selector
 
 from .const import (
     DOMAIN, CONF_PLANT_NAME, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY,
-    CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD, CONF_NOTIFY_SERVICE, CONF_DELAY,
-    CONF_IMAGE_URL, DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD, DEFAULT_DELAY,
+    CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD, CONF_BATTERY_LOW_THRESHOLD,
+    CONF_NOTIFY_SERVICE, CONF_DELAY, CONF_IMAGE_URL, DEFAULT_LOW_THRESHOLD,
+    DEFAULT_HIGH_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD, DEFAULT_DELAY,
 )
 
 
@@ -91,6 +92,12 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
                 CONF_HIGH_THRESHOLD,
                 default=self.config_entry.options.get(
                     CONF_HIGH_THRESHOLD, DEFAULT_HIGH_THRESHOLD
+                ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+            vol.Required(
+                CONF_BATTERY_LOW_THRESHOLD,
+                default=self.config_entry.options.get(
+                    CONF_BATTERY_LOW_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD
                 ),
             ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
             vol.Optional(
