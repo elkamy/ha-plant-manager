@@ -52,6 +52,7 @@ Options de la carte :
 - `show_images: false` : masque les photos personnalisées.
 - `show_battery: false` : masque les indicateurs de batterie.
 - `show_history: true` : affiche une courbe de l'humidité du sol sur les dernières 24 heures (désactivé par défaut pour limiter les requêtes d'historique).
+- La carte affiche aussi un conseil d'entretien lié au statut et, lorsque Home Assistant fournit l'horodatage du capteur, l'ancienneté de la dernière mesure.
 - `compact: true` : réduit les marges, les photos et l'espacement vertical pour afficher davantage de plantes à l'écran.
 - `tap_action: none` : désactive l'ouverture des détails au toucher (par défaut, toucher une plante ouvre sa fenêtre « Plus d'informations »).
 - Un résumé visuel affiche le nombre de plantes à arroser, très humides, en forme et indisponibles parmi les plantes actuellement affichées.
