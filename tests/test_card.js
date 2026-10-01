@@ -300,6 +300,44 @@ test("renders a 24-hour moisture trend when history is enabled and available", a
   assert.match(card.innerHTML, /En hausse/);
 });
 
+test("shows a qualified possible-watering hint after a notable moisture rise", async () => {
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "OK", {
+        plant_name: "Monstera",
+        moisture: 45,
+        moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
+    callWS: () => Promise.resolve([[
+      { state: "20" },
+      { state: "22" },
+      { state: "46" },
+    ]]),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.innerHTML, /Hausse notable détectée : arrosage possible \(estimation\)/);
+});
+
+test("does not infer a watering event from a small moisture increase", async () => {
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "OK", {
+        plant_name: "Monstera",
+        moisture: 30,
+        moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
+    callWS: () => Promise.resolve([[{ state: "20" }, { state: "24" }, { state: "30" }]]),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.doesNotMatch(card.innerHTML, /Hausse notable détectée/);
+});
+
 test("shows contextual care advice for the current plant status", () => {
   const html = renderCard({
     "sensor.dry": plant("sensor.dry", "à arroser", { plant_name: "Pachira", moisture: 20 }),
