@@ -7,8 +7,9 @@ from homeassistant.helpers.entity import DeviceInfo
 
 from .const import (
     DOMAIN, CONF_PLANT_NAME, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY,
-    CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD, CONF_IMAGE_URL,
-    DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD,
+    CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD, CONF_BATTERY_LOW_THRESHOLD,
+    CONF_IMAGE_URL, DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD,
+    DEFAULT_BATTERY_LOW_THRESHOLD,
 )
 
 
@@ -64,6 +65,11 @@ class PlantStatusSensor(SensorEntity):
         battery_state = self.hass.states.get(battery_entity) if battery_entity else None
         low = float(self.entry.options.get(CONF_LOW_THRESHOLD, DEFAULT_LOW_THRESHOLD))
         high = float(self.entry.options.get(CONF_HIGH_THRESHOLD, DEFAULT_HIGH_THRESHOLD))
+        battery_low = float(
+            self.entry.options.get(
+                CONF_BATTERY_LOW_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD
+            )
+        )
         return {
             "plant_manager": True,
             "plant_name": self.entry.data.get(CONF_PLANT_NAME, self.entry.title),
@@ -71,6 +77,8 @@ class PlantStatusSensor(SensorEntity):
             "moisture": self._moisture_value,
             "battery_entity": battery_entity,
             "battery": battery_state.state if battery_state else None,
+            "battery_low_threshold": battery_low,
+            "battery_reset_threshold": min(battery_low + 5, 100),
             "low_threshold": low,
             "high_threshold": high,
             "image_url": self.entry.options.get(CONF_IMAGE_URL, ""),
