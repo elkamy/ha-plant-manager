@@ -52,6 +52,7 @@ Options de la carte :
 - `show_images: false` : masque les photos personnalisées.
 - `show_battery: false` : masque les indicateurs de batterie.
 - `compact: true` : réduit les marges, les photos et l'espacement vertical pour afficher davantage de plantes à l'écran.
+- `tap_action: none` : désactive l'ouverture des détails au toucher (par défaut, toucher une plante ouvre sa fenêtre « Plus d'informations »).
 - `filter_by: all` : affiche toutes les plantes (par défaut).
 - `filter_by: needs_water` : affiche uniquement les plantes à arroser.
 - `filter_by: attention` : affiche les plantes à arroser, très humides ou indisponibles.
