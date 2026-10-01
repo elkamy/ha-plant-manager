@@ -3,6 +3,7 @@
 ## [0.2.4] — 2026-10-01
 
 ### Ajouté
+- Option `show_history: true` pour visualiser la tendance d'humidité sur 24 h, avec une indication en hausse, en baisse ou stable. Désactivée par défaut pour limiter les appels à l'historique Home Assistant.
 - Résumé visuel des plantes affichées, réparties par état : à arroser, très humides, en forme et indisponibles.
 - Tri de la carte Lovelace par nom, humidité croissante ou statut de la plante.
 - Filtres Lovelace pour afficher toutes les plantes, uniquement celles à arroser ou celles nécessitant une attention particulière.
