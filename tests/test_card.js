@@ -283,16 +283,19 @@ test("does not display out-of-range moisture as a valid progress value", () => {
 });
 
 test("renders a 24-hour moisture trend when history is enabled and available", async () => {
-  const states = {
-    "sensor.plant_status": plant("sensor.plant_status", "OK", {
-      plant_name: "Monstera",
-      moisture: 50,
-      moisture_entity: "sensor.monstera_moisture",
-    }),
-  };
-  const htmlBeforeHistory = renderCard(states, { show_history: true }, {
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "OK", {
+        plant_name: "Monstera",
+        moisture: 50,
+        moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
     callWS: () => Promise.resolve([[{ state: "25" }, { state: "35" }, { state: "50" }]]),
-  });
-  assert.match(htmlBeforeHistory, /Tendance sur 24 h/);
-  assert.match(htmlBeforeHistory, /En hausse/);
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.innerHTML, /Tendance sur 24 h/);
+  assert.match(card.innerHTML, /En hausse/);
 });
