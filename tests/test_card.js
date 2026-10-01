@@ -252,3 +252,32 @@ test("makes plant rows keyboard-accessible and supports disabling tap actions", 
   assert.match(inert, /tabindex="-1"/);
   assert.doesNotMatch(inert, /<article class="plant"[^>]*role="button"/);
 });
+
+test("shows a status overview for the plants currently displayed", () => {
+  const html = renderCard({
+    "sensor.dry": plant("sensor.dry", "à arroser", { plant_name: "Pachira", moisture: 20 }),
+    "sensor.wet": plant("sensor.wet", "très humide", { plant_name: "Fougère", moisture: 90 }),
+    "sensor.ok": plant("sensor.ok", "OK", { plant_name: "Monstera", moisture: 50 }),
+    "sensor.unavailable": plant("sensor.unavailable", "indisponible", { plant_name: "Ficus", moisture: null }),
+  });
+
+  assert.match(html, /aria-label="Résumé des plantes"/);
+  assert.match(html, /overview-count">1<\/span><span>À arroser/);
+  assert.match(html, /overview-count">1<\/span><span>Très humides/);
+  assert.match(html, /overview-count">1<\/span><span>En forme/);
+  assert.match(html, /overview-count">1<\/span><span>Indisponibles/);
+});
+
+test("does not display out-of-range moisture as a valid progress value", () => {
+  const html = renderCard({
+    "sensor.invalid": plant("sensor.invalid", "indisponible", {
+      plant_name: "Ficus",
+      moisture: 150,
+    }),
+  });
+
+  assert.match(html, /Indisponible/);
+  assert.doesNotMatch(html, /aria-valuenow="100"/);
+  assert.match(html, /aria-valuetext="Indisponible"/);
+  assert.match(html, /width:0%/);
+});
