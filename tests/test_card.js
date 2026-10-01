@@ -170,3 +170,46 @@ test("supports sorting by plant status and hiding images and battery", () => {
   assert.doesNotMatch(html, /18%|80%/);
   assert.match(html, /plant-icon/);
 });
+
+test("filters plants that need watering", () => {
+  const html = renderCard({
+    "sensor.monstera_status": plant("sensor.monstera_status", "OK", {
+      plant_name: "Monstera",
+      moisture: 55,
+    }),
+    "sensor.pachira_status": plant("sensor.pachira_status", "à arroser", {
+      plant_name: "Pachira",
+      moisture: 22,
+    }),
+  }, { filter_by: "needs_water" });
+
+  assert.match(html, /Pachira/);
+  assert.doesNotMatch(html, /Monstera/);
+  assert.match(html, /1 plante affichée/);
+});
+
+test("attention filter includes dry, very wet and unavailable plants", () => {
+  const html = renderCard({
+    "sensor.dry": plant("sensor.dry", "à arroser", { plant_name: "Pachira", moisture: 20 }),
+    "sensor.wet": plant("sensor.wet", "très humide", { plant_name: "Fougère", moisture: 90 }),
+    "sensor.unavailable": plant("sensor.unavailable", "indisponible", { plant_name: "Ficus", moisture: null }),
+    "sensor.ok": plant("sensor.ok", "OK", { plant_name: "Monstera", moisture: 50 }),
+  }, { filter_by: "attention" });
+
+  assert.match(html, /Pachira/);
+  assert.match(html, /Fougère/);
+  assert.match(html, /Ficus/);
+  assert.doesNotMatch(html, /Monstera/);
+});
+
+test("shows a dedicated empty state when no plant matches the filter", () => {
+  const html = renderCard({
+    "sensor.monstera_status": plant("sensor.monstera_status", "OK", {
+      plant_name: "Monstera",
+      moisture: 55,
+    }),
+  }, { filter_by: "needs_water" });
+
+  assert.match(html, /Aucune plante correspondante/);
+  assert.doesNotMatch(html, /Aucune plante pour le moment/);
+});
