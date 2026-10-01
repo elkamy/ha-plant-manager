@@ -51,6 +51,7 @@ Options de la carte :
 - `sort_by: status` : plantes à arroser en premier, puis très humides, en bonne santé et indisponibles.
 - `show_images: false` : masque les photos personnalisées.
 - `show_battery: false` : masque les indicateurs de batterie.
+- `show_history: true` : affiche une courbe de l'humidité du sol sur les dernières 24 heures (désactivé par défaut pour limiter les requêtes d'historique).
 - `compact: true` : réduit les marges, les photos et l'espacement vertical pour afficher davantage de plantes à l'écran.
 - `tap_action: none` : désactive l'ouverture des détails au toucher (par défaut, toucher une plante ouvre sa fenêtre « Plus d'informations »).
 - Un résumé visuel affiche le nombre de plantes à arroser, très humides, en forme et indisponibles parmi les plantes actuellement affichées.
