@@ -391,3 +391,23 @@ test("does not infer watering across an unavailable history sample", async () =>
   assert.match(card.innerHTML, /Tendance sur 24 h/);
   assert.doesNotMatch(card.innerHTML, /Hausse notable détectée/);
 });
+
+
+test("does not render a broken age label for an invalid sensor timestamp", () => {
+  const html = renderCard({
+    "sensor.plant_status": plant("sensor.plant_status", "OK", {
+      plant_name: "Monstera",
+      moisture: 50,
+      moisture_entity: "sensor.monstera_moisture",
+    }),
+    "sensor.monstera_moisture": {
+      entity_id: "sensor.monstera_moisture",
+      state: "50",
+      attributes: {},
+      last_updated: "not-a-date",
+    },
+  });
+
+  assert.doesNotMatch(html, /NaN/);
+  assert.doesNotMatch(html, /Dernière mesure/);
+});
