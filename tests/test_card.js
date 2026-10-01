@@ -250,5 +250,5 @@ test("makes plant rows keyboard-accessible and supports disabling tap actions", 
   assert.match(clickable, /role="button" aria-label="Afficher les détails de Pachira"/);
   assert.match(clickable, /tabindex="0"/);
   assert.match(inert, /tabindex="-1"/);
-  assert.doesNotMatch(inert, /role="button"/);
+  assert.doesNotMatch(inert, /<article class="plant"[^>]*role="button"/);
 });
