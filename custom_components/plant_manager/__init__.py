@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -9,7 +10,12 @@ from homeassistant.helpers.event import (
     async_track_state_change_event,
 )
 
-from .alerts import should_start_alert
+from .alerts import (
+    normalize_notify_services,
+    parse_delay_minutes,
+    parse_percentage,
+    should_start_alert,
+)
 from .const import (
     DOMAIN, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY, CONF_LOW_THRESHOLD,
     CONF_BATTERY_LOW_THRESHOLD, CONF_NOTIFY_SERVICE, CONF_DELAY,
@@ -39,16 +45,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     moisture_entity = entry.data[CONF_MOISTURE_ENTITY]
 
-    def _get_notify_services() -> list[str]:
-        configured_services = entry.options.get(CONF_NOTIFY_SERVICE, [])
-        if isinstance(configured_services, str):
-            configured_services = [configured_services] if configured_services else []
-        return [
-            service for service in configured_services
-            if isinstance(service, str)
-            and service.startswith("notify.")
-            and "." in service
-        ]
 
     @callback
     def _handle_moisture_change(event):
@@ -58,18 +54,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return
         try:
             current = float(new_state.state)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, OverflowError):
+            return
+        if not math.isfinite(current):
             return
 
         previous = None
         if old_state is not None:
             try:
                 previous = float(old_state.state)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, OverflowError):
                 pass
+            else:
+                if not math.isfinite(previous):
+                    previous = None
 
-        threshold = float(
-            entry.options.get(CONF_LOW_THRESHOLD, DEFAULT_LOW_THRESHOLD)
+        threshold = parse_percentage(
+            entry.options.get(CONF_LOW_THRESHOLD, DEFAULT_LOW_THRESHOLD),
+            DEFAULT_LOW_THRESHOLD,
         )
 
         # A new dry-soil episode can alert only after moisture recovers.
@@ -85,7 +87,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ):
             return
 
-        services = _get_notify_services()
+        services = normalize_notify_services(entry.options.get(CONF_NOTIFY_SERVICE, []))
         if not services:
             _LOGGER.debug(
                 "Plant Manager: no valid notify service configured for %s",
@@ -94,7 +96,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return
 
         entry_data["moisture_alert_pending"] = True
-        delay = max(0, int(entry.options.get(CONF_DELAY, DEFAULT_DELAY)))
+        delay = parse_delay_minutes(
+            entry.options.get(CONF_DELAY, DEFAULT_DELAY), DEFAULT_DELAY
+        )
 
         async def _send(_now):
             entry_data["moisture_alert_pending"] = False
@@ -106,11 +110,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return
             try:
                 moisture = float(state.state)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, OverflowError):
+                return
+            if not math.isfinite(moisture):
                 return
 
-            current_threshold = float(
-                entry.options.get(CONF_LOW_THRESHOLD, DEFAULT_LOW_THRESHOLD)
+            current_threshold = parse_percentage(
+                entry.options.get(CONF_LOW_THRESHOLD, DEFAULT_LOW_THRESHOLD),
+                DEFAULT_LOW_THRESHOLD,
             )
             if moisture >= current_threshold:
                 return
@@ -153,20 +160,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
             try:
                 current = float(new_state.state)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, OverflowError):
+                return
+            if not math.isfinite(current):
                 return
 
             previous = None
             if old_state is not None:
                 try:
                     previous = float(old_state.state)
-                except (ValueError, TypeError):
+                except (ValueError, TypeError, OverflowError):
                     pass
+                else:
+                    if not math.isfinite(previous):
+                        previous = None
 
-            threshold = float(
+            threshold = parse_percentage(
                 entry.options.get(
                     CONF_BATTERY_LOW_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD
-                )
+                ),
+                DEFAULT_BATTERY_LOW_THRESHOLD,
             )
             reset_threshold = min(threshold + 5, 100)
             if entry_data["battery_alert_active"]:
@@ -184,7 +197,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ):
                 return
 
-            services = _get_notify_services()
+            services = normalize_notify_services(entry.options.get(CONF_NOTIFY_SERVICE, []))
             if not services:
                 _LOGGER.debug(
                     "Plant Manager: no valid notify service configured for %s",
@@ -193,7 +206,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return
 
             entry_data["battery_alert_pending"] = True
-            delay = max(0, int(entry.options.get(CONF_DELAY, DEFAULT_DELAY)))
+            delay = parse_delay_minutes(
+                entry.options.get(CONF_DELAY, DEFAULT_DELAY), DEFAULT_DELAY
+            )
 
             async def _send_battery_alert(_now):
                 entry_data["battery_alert_pending"] = False
@@ -205,13 +220,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     return
                 try:
                     battery = float(state.state)
-                except (ValueError, TypeError):
+                except (ValueError, TypeError, OverflowError):
                     return
-                current_threshold = float(
+                if not math.isfinite(battery):
+                    return
+                current_threshold = parse_percentage(
                     entry.options.get(
                         CONF_BATTERY_LOW_THRESHOLD,
                         DEFAULT_BATTERY_LOW_THRESHOLD,
-                    )
+                    ),
+                    DEFAULT_BATTERY_LOW_THRESHOLD,
                 )
                 if battery >= current_threshold:
                     return
