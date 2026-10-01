@@ -50,6 +50,7 @@ class FakeHass:
         )
         self.state_change_callbacks = {}
         self.delayed_callbacks = []
+        self.cancelled_delayed = []
 
     def add_state_listener(self, entity_ids, callback):
         for entity_id in entity_ids:
@@ -58,7 +59,13 @@ class FakeHass:
 
     def schedule(self, delay, callback):
         self.delayed_callbacks.append(callback)
-        return lambda: None
+        cancellation = {"cancelled": False}
+        self.cancelled_delayed.append(cancellation)
+
+        def cancel():
+            cancellation["cancelled"] = True
+
+        return cancel
 
     async def fire_delayed(self, index=0):
         await self.delayed_callbacks[index](None)
@@ -200,9 +207,16 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         callback(types.SimpleNamespace(data={"old_state": FakeState(25), "new_state": FakeState(24)}))
         self.assertEqual(len(hass.delayed_callbacks), 1)
 
-    async def test_pending_notification_cancellation_is_registered_for_unload(self):
-        _hass, entry = await self.setup_integration()
-        self.assertGreaterEqual(len(entry.unload_callbacks), 3)
+    async def test_pending_notification_is_cancelled_on_unload(self):
+        hass, entry = await self.setup_integration()
+        entity_id = "sensor.pachira_soil_moisture"
+        hass.states.values[entity_id] = FakeState(25)
+        callback = hass.state_change_callbacks[entity_id]
+        callback(types.SimpleNamespace(data={"old_state": FakeState(31), "new_state": FakeState(25)}))
+
+        self.assertFalse(hass.cancelled_delayed[0]["cancelled"])
+        entry.unload_callbacks[-1]()
+        self.assertTrue(hass.cancelled_delayed[0]["cancelled"])
 
 
 if __name__ == "__main__":
