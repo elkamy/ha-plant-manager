@@ -150,6 +150,41 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         await INTEGRATION.async_setup_entry(hass, entry)
         return hass, entry
 
+    async def test_notifications_disabled_for_plant_prevent_scheduling_alerts(self):
+        hass, entry = await self.setup_integration(with_battery=True)
+        entry.options["notifications_enabled"] = False
+
+        moisture_entity = "sensor.pachira_soil_moisture"
+        hass.state_change_callbacks[moisture_entity](
+            types.SimpleNamespace(data={
+                "old_state": FakeState(31), "new_state": FakeState(25)
+            })
+        )
+        battery_entity = "sensor.pachira_battery"
+        hass.state_change_callbacks[battery_entity](
+            types.SimpleNamespace(data={
+                "old_state": FakeState(30), "new_state": FakeState(20)
+            })
+        )
+
+        self.assertEqual(len(hass.delayed_callbacks), 0)
+        hass.services.async_call.assert_not_awaited()
+
+    async def test_disabling_plant_notifications_before_delay_prevents_send(self):
+        hass, entry = await self.setup_integration()
+        entity_id = "sensor.pachira_soil_moisture"
+        hass.states.values[entity_id] = FakeState(25)
+        hass.state_change_callbacks[entity_id](
+            types.SimpleNamespace(data={
+                "old_state": FakeState(31), "new_state": FakeState(25)
+            })
+        )
+        self.assertEqual(len(hass.delayed_callbacks), 1)
+
+        entry.options["notifications_enabled"] = False
+        await hass.fire_delayed()
+        hass.services.async_call.assert_not_awaited()
+
     async def test_moisture_alert_is_cancelled_if_soil_recovers_during_delay(self):
         hass, _entry = await self.setup_integration()
         hass.states.values["sensor.pachira_soil_moisture"] = FakeState(25)
