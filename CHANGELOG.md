@@ -1,5 +1,10 @@
 # Journal des modifications
 
+## Non publié
+
+### Ajouté
+- Nouvelle carte Lovelace `plant-manager-detail-card` pour afficher une fiche individuelle avec humidité, seuils, batterie, dernière mesure et historique sur 24 h.
+
 ## [0.2.7] — 2026-10-02
 
 ### Fiabilité
