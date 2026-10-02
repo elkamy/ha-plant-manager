@@ -50,6 +50,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry_data = {
         "battery_alert_active": False,
         "battery_alert_pending": False,
+        "battery_alert_generation": 0,
+        "battery_alert_cancel": None,
         "moisture_alert_active": False,
         "moisture_alert_pending": False,
         "moisture_alert_generation": 0,
@@ -216,6 +218,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 DEFAULT_BATTERY_LOW_THRESHOLD,
             )
             reset_threshold = min(threshold + 5, 100)
+            if current >= threshold and entry_data["battery_alert_pending"]:
+                # Recovery before delivery ends this pending low-battery episode.
+                entry_data["battery_alert_generation"] += 1
+                cancel_pending = entry_data.get("battery_alert_cancel")
+                if cancel_pending is not None:
+                    cancel_pending()
+                entry_data["battery_alert_cancel"] = None
+                entry_data["battery_alert_pending"] = False
+
             if entry_data["battery_alert_active"]:
                 if current >= reset_threshold:
                     entry_data["battery_alert_active"] = False
@@ -243,12 +254,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return
 
             entry_data["battery_alert_pending"] = True
+            entry_data["battery_alert_generation"] += 1
+            generation = entry_data["battery_alert_generation"]
             delay = parse_delay_minutes(
                 entry.options.get(CONF_DELAY, DEFAULT_DELAY), DEFAULT_DELAY
             )
 
             async def _send_battery_alert(_now):
+                if generation != entry_data["battery_alert_generation"]:
+                    return
                 entry_data["battery_alert_pending"] = False
+                entry_data["battery_alert_cancel"] = None
                 if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
                     return
                 if entry_data["battery_alert_active"]:
@@ -295,6 +311,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             cancel_pending = async_call_later(
                 hass, delay * 60, _send_battery_alert
             )
+            entry_data["battery_alert_cancel"] = cancel_pending
             entry.async_on_unload(cancel_pending)
 
         unsubscribe_battery = async_track_state_change_event(
