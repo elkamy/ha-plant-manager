@@ -18,7 +18,7 @@ const context = {
 };
 
 vm.runInNewContext(
-  fs.readFileSync("www/plant-manager-card.js", "utf8"),
+  fs.readFileSync("custom_components/plant_manager/www/plant-manager-card.js", "utf8"),
   context,
   { filename: "plant-manager-card.js" },
 );
