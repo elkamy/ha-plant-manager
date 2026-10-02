@@ -1,0 +1,31 @@
+name: Proposer une fonctionnalité
+description: Décrire une amélioration pour Plant Manager
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Décrivez le besoin et le bénéfice attendu. Une proposition centrée sur un cas d'usage concret est plus facile à évaluer.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Le besoin
+      description: Quel problème ou quelle difficulté rencontrez-vous ?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution proposée
+      description: Comment imaginez-vous cette fonctionnalité ?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives envisagées
+      description: Avez-vous déjà essayé une autre méthode ?
+    validations:
+      required: false
