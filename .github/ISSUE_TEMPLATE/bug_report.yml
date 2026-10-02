@@ -1,0 +1,66 @@
+name: Signaler un bug
+description: Signaler un problème avec Plant Manager
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de décrire le problème aussi précisément que possible.
+        Ne partagez aucune information privée (jetons, mots de passe, URL privées ou données personnelles).
+  - type: input
+    id: ha-version
+    attributes:
+      label: Version de Home Assistant
+      placeholder: "2026.10.0"
+    validations:
+      required: true
+  - type: input
+    id: integration-version
+    attributes:
+      label: Version de Plant Manager
+      placeholder: "0.2.7"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Méthode d'installation
+      options:
+        - HACS
+        - Manuelle
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportement attendu
+      description: Que devait-il se passer ?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportement observé
+      description: Que s'est-il passé à la place ?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Étapes pour reproduire
+      placeholder: |
+        1. Configurer...
+        2. Attendre...
+        3. Observer...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Journaux pertinents
+      description: Retirez toute information privée avant de coller des journaux.
+      render: text
+    validations:
+      required: false
