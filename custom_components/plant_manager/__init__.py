@@ -35,14 +35,18 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     from homeassistant.components.frontend import add_extra_js_url
     from homeassistant.components.http import StaticPathConfig
 
-    card_path = Path(__file__).parent / "www" / "plant-manager-card.js"
-    card_url = "/plant_manager/plant-manager-card.js"
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(card_url, str(card_path), cache_headers=False)]
+    www_path = Path(__file__).parent / "www"
+    cards = (
+        ("plant-manager-card.js", "/plant_manager/plant-manager-card.js"),
+        ("plant-manager-detail-card.js", "/plant_manager/plant-manager-detail-card.js"),
     )
-    # Keep the URL version aligned with the integration manifest to invalidate
-    # browser caches when the card is updated.
-    add_extra_js_url(hass, f"{card_url}?v=0.2.7")
+    await hass.http.async_register_static_paths([
+        StaticPathConfig(url, str(www_path / filename), cache_headers=False)
+        for filename, url in cards
+    ])
+    # Bump the query version when changing card JavaScript to invalidate caches.
+    for _filename, url in cards:
+        add_extra_js_url(hass, f"{url}?v=0.2.8-dev")
     hass.data.setdefault(DOMAIN, {})
     return True
 
