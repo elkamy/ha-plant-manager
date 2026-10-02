@@ -152,6 +152,21 @@ test("supports sorting plants by moisture with unavailable values last", () => {
   assert.ok(html.indexOf("Monstera") < html.indexOf("Ficus"));
 });
 
+test("sorts out-of-range moisture values with unavailable readings", () => {
+  const html = renderCard({
+    "sensor.invalid": plant("sensor.invalid", "indisponible", {
+      plant_name: "Ficus",
+      moisture: 150,
+    }),
+    "sensor.valid": plant("sensor.valid", "OK", {
+      plant_name: "Monstera",
+      moisture: 50,
+    }),
+  }, { sort_by: "moisture" });
+
+  assert.ok(html.indexOf("Monstera") < html.indexOf("Ficus"));
+});
+
 test("supports sorting by plant status and hiding images and battery", () => {
   const html = renderCard({
     "sensor.monstera_status": plant("sensor.monstera_status", "OK", {
