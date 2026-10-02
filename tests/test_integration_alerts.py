@@ -283,6 +283,19 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         await hass.fire_delayed(index=1)
         self.assertEqual(hass.services.async_call.await_count, 2)
 
+    async def test_out_of_range_battery_after_delay_is_ignored(self):
+        hass, _entry = await self.setup_integration(with_battery=True)
+        entity_id = "sensor.pachira_battery"
+        hass.states.values[entity_id] = FakeState(20)
+        callback = hass.state_change_callbacks[entity_id]
+
+        callback(types.SimpleNamespace(data={
+            "old_state": FakeState(30), "new_state": FakeState(20)
+        }))
+        hass.states.values[entity_id] = FakeState(150)
+        await hass.fire_delayed()
+        hass.services.async_call.assert_not_awaited()
+
     async def test_out_of_range_battery_reading_is_ignored(self):
         hass, _entry = await self.setup_integration(with_battery=True)
         callback = hass.state_change_callbacks["sensor.pachira_battery"]
