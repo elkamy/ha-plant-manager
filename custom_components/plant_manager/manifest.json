@@ -1,12 +1,12 @@
 {
   "domain": "plant_manager",
   "name": "Plant Manager",
-  "version": "0.2.7",
-  "documentation": "https://github.com/elkamy/ha-plant-manager",
-  "issue_tracker": "https://github.com/elkamy/ha-plant-manager/issues",
   "codeowners": ["@elkamy"],
   "config_flow": true,
-  "iot_class": "local_push",
   "dependencies": ["frontend", "http"],
-  "requirements": []
+  "documentation": "https://github.com/elkamy/ha-plant-manager",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/elkamy/ha-plant-manager/issues",
+  "requirements": [],
+  "version": "0.2.7"
 }
