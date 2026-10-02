@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import math
+from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -28,6 +29,18 @@ PLATFORMS = ["sensor"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Register the Lovelace card and serve its JavaScript from this integration."""
+    from homeassistant.components.frontend import add_extra_js_url
+    from homeassistant.components.http import StaticPathConfig
+
+    card_path = Path(__file__).parent / "www" / "plant-manager-card.js"
+    card_url = "/plant_manager/plant-manager-card.js"
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(card_url, str(card_path), cache_headers=False)]
+    )
+    # Keep the URL version aligned with the integration manifest to invalidate
+    # browser caches when the card is updated.
+    add_extra_js_url(hass, f"{card_url}?v=0.2.5")
     hass.data.setdefault(DOMAIN, {})
     return True
 
