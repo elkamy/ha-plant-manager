@@ -1,5 +1,4 @@
 {
   "name": "Plant Manager",
-  "homeassistant": "2024.6.0",
-  "domains": ["plant_manager"]
+  "homeassistant": "2024.6.0"
 }
