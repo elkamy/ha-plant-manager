@@ -15,7 +15,7 @@ Intégration personnalisée Home Assistant pour gérer des plantes d'intérieur 
 
 ## Configuration des notifications
 
-Dans les options de chaque plante, sélectionnez un ou plusieurs services notify et définissez le délai avant l'envoi. Le délai est partagé entre les notifications d'arrosage et de batterie.
+Dans les options de chaque plante, activez ou désactivez « Notifications activées », sélectionnez un ou plusieurs services notify et définissez le délai avant l'envoi. Ce réglage est propre à chaque plante et coupe à la fois les alertes d'arrosage et de batterie sans affecter les autres plantes. Les notifications sont activées par défaut, y compris pour les plantes déjà configurées. Le délai est partagé entre les notifications d'arrosage et de batterie.
 
 Le seuil de batterie faible est configurable dans les options de chaque plante. Par défaut, l'alerte se déclenche sous 25 % et se réarme à partir de 30 %. Les valeurs unknown, unavailable et non numériques sont ignorées.
 
