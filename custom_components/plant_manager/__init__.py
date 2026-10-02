@@ -20,8 +20,8 @@ from .alerts import (
 from .const import (
     DOMAIN, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY, CONF_LOW_THRESHOLD,
     CONF_BATTERY_LOW_THRESHOLD, CONF_NOTIFY_SERVICE, CONF_DELAY,
-    CONF_PLANT_NAME, DEFAULT_LOW_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD,
-    DEFAULT_DELAY,
+    CONF_PLANT_NAME, CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED,
+    DEFAULT_LOW_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD, DEFAULT_DELAY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -100,6 +100,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ):
             return
 
+        if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
+            return
+
         services = normalize_notify_services(entry.options.get(CONF_NOTIFY_SERVICE, []))
         if not services:
             _LOGGER.debug(
@@ -115,6 +118,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         async def _send(_now):
             entry_data["moisture_alert_pending"] = False
+            if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
+                return
             if entry_data["moisture_alert_active"]:
                 return
 
@@ -210,6 +215,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ):
                 return
 
+            if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
+                return
+
             services = normalize_notify_services(entry.options.get(CONF_NOTIFY_SERVICE, []))
             if not services:
                 _LOGGER.debug(
@@ -225,6 +233,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
             async def _send_battery_alert(_now):
                 entry_data["battery_alert_pending"] = False
+                if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
+                    return
                 if entry_data["battery_alert_active"]:
                     return
 
