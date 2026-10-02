@@ -1,19 +1,15 @@
-<div align="center">
-
 ![Plant Manager for Home Assistant](docs/plant-manager-banner.svg)
 
 # Plant Manager
 
-**Gardez un œil sur vos plantes d'intérieur depuis Home Assistant.**
+**Suivez l'humidité, les besoins en arrosage et la batterie de vos plantes d'intérieur directement dans Home Assistant.**
 
 [![HACS custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
 [![Validate](https://github.com/elkamy/ha-plant-manager/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/elkamy/ha-plant-manager/actions/workflows/validate.yml)
 [![Hassfest](https://github.com/elkamy/ha-plant-manager/actions/workflows/hassfest.yml/badge.svg?branch=main)](https://github.com/elkamy/ha-plant-manager/actions/workflows/hassfest.yml)
 [![HACS validation](https://github.com/elkamy/ha-plant-manager/actions/workflows/hacs.yml/badge.svg?branch=main)](https://github.com/elkamy/ha-plant-manager/actions/workflows/hacs.yml)
 
-[Installer avec HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=elkamy&repository=ha-plant-manager&category=integration) · [Documentation](https://github.com/elkamy/ha-plant-manager#readme) · [Signaler un problème](https://github.com/elkamy/ha-plant-manager/issues)
-
-</div>
+[**Installer avec HACS**](https://my.home-assistant.io/redirect/hacs_repository/?owner=elkamy&repository=ha-plant-manager&category=integration) · [Documentation](https://github.com/elkamy/ha-plant-manager#readme) · [Signaler un problème](https://github.com/elkamy/ha-plant-manager/issues)
 
 ## Ce que fait Plant Manager
 
@@ -27,7 +23,7 @@ Plant Manager est une intégration Home Assistant pour suivre les plantes d'int�
 
 ## Installation rapide
 
-1. Dans Home Assistant, installez **HACS** si nécessaire.
+1. Installez [HACS](https://hacs.xyz/) si nécessaire.
 2. Ouvrez le lien **Installer avec HACS** ci-dessus, ou ajoutez `elkamy/ha-plant-manager` comme dépôt personnalisé de catégorie **Integration**.
 3. Installez Plant Manager, puis redémarrez Home Assistant.
 4. Dans **Paramètres → Appareils et services**, ajoutez l'intégration **Plant Manager**.
