@@ -323,6 +323,35 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(hass.delayed_callbacks), 0)
         hass.services.async_call.assert_not_awaited()
 
+    async def test_battery_recovery_resets_pending_alert_delay(self):
+        hass, _entry = await self.setup_integration(with_battery=True)
+        entity_id = "sensor.pachira_battery"
+        callback = hass.state_change_callbacks[entity_id]
+
+        callback(types.SimpleNamespace(data={
+            "old_state": FakeState(30), "new_state": FakeState(20)
+        }))
+        self.assertEqual(len(hass.delayed_callbacks), 1)
+
+        # Recovery above the low threshold cancels the pending alert.
+        callback(types.SimpleNamespace(data={
+            "old_state": FakeState(20), "new_state": FakeState(40)
+        }))
+        self.assertTrue(hass.cancelled_delayed[0]["cancelled"])
+
+        # A new low-battery episode must get a fresh delay.
+        callback(types.SimpleNamespace(data={
+            "old_state": FakeState(40), "new_state": FakeState(20)
+        }))
+        self.assertEqual(len(hass.delayed_callbacks), 2)
+        hass.states.values[entity_id] = FakeState(20)
+
+        await hass.fire_delayed(index=0)
+        hass.services.async_call.assert_not_awaited()
+
+        await hass.fire_delayed(index=1)
+        hass.services.async_call.assert_awaited_once()
+
     async def test_battery_alert_rearms_after_battery_recovers(self):
         hass, _entry = await self.setup_integration(with_battery=True)
         entity_id = "sensor.pachira_battery"
