@@ -11,11 +11,18 @@ def should_start_alert(
     alert_pending: bool,
 ) -> bool:
     """Return whether this state change should start a new alert episode."""
+    previous_is_valid_and_low = (
+        previous is not None
+        and math.isfinite(previous)
+        and 0 <= previous <= 100
+        and previous < threshold
+    )
     return (
         math.isfinite(current)
+        and 0 <= current <= 100
         and math.isfinite(threshold)
         and current < threshold
-        and not (previous is not None and previous < threshold)
+        and not previous_is_valid_and_low
         and not alert_active
         and not alert_pending
     )
