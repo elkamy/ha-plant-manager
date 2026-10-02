@@ -38,7 +38,7 @@ class PlantManagerCard extends HTMLElement {
       const value = plant.attributes?.moisture;
       if (value === null || value === undefined || value === "") return NaN;
       const number = Number(value);
-      return Number.isFinite(number) ? number : NaN;
+      return Number.isFinite(number) && number >= 0 && number <= 100 ? number : NaN;
     };
     plants.sort((a, b) => {
       if (sortBy === "moisture") {
