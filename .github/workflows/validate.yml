@@ -20,6 +20,9 @@ jobs:
           node-version: "22"
 
       - name: Check Lovelace card syntax
+        run: node --check custom_components/plant_manager/www/plant-manager-card.js
+
+      - name: Check manual-install card syntax
         run: node --check www/plant-manager-card.js
 
       - name: Test Lovelace card rendering
