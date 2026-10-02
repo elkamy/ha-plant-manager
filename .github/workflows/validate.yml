@@ -25,8 +25,14 @@ jobs:
       - name: Check manual-install card syntax
         run: node --check www/plant-manager-card.js
 
+      - name: Check plant detail card syntax
+        run: node --check custom_components/plant_manager/www/plant-manager-detail-card.js
+
+      - name: Check manual-install detail card syntax
+        run: node --check www/plant-manager-detail-card.js
+
       - name: Test Lovelace card rendering
-        run: node --test tests/test_card.js
+        run: node --test tests/test_card.js tests/test_detail_card.js
 
       - name: Set up Python
         uses: actions/setup-python@v7
