@@ -13,6 +13,7 @@ const context = {
   HTMLElement: FakeHTMLElement,
   customElements: {
     define: (name, component) => registry.set(name, component),
+    get: (name) => registry.get(name),
   },
   window: windowStub,
 };
