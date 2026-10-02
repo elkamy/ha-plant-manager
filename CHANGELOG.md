@@ -1,5 +1,14 @@
 # Journal des modifications
 
+## [0.2.5] — 2026-10-02
+
+### Ajouté
+- Chargement automatique de la carte Lovelace par l'intégration : plus besoin de copier le fichier dans `www` ni d'ajouter une ressource au tableau de bord.
+- Le composant de carte évite les enregistrements en double si une ancienne ressource manuelle est encore présente.
+
+### Documentation
+- Mise à jour des instructions d'installation de la carte pour le chargement automatique.
+
 ## [0.2.4] — 2026-10-01
 
 ### Ajouté
