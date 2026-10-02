@@ -88,6 +88,8 @@ def load_integration_with_home_assistant_doubles():
     core.callback = lambda function: function
     helpers = types.ModuleType("homeassistant.helpers")
     helpers.__path__ = []
+    config_validation = types.ModuleType("homeassistant.helpers.config_validation")
+    config_validation.config_entry_only_config_schema = lambda domain: lambda config: config
     event = types.ModuleType("homeassistant.helpers.event")
     event.async_track_state_change_event = (
         lambda hass, entity_ids, callback: hass.add_state_listener(
@@ -104,6 +106,7 @@ def load_integration_with_home_assistant_doubles():
             "homeassistant.config_entries": config_entries,
             "homeassistant.core": core,
             "homeassistant.helpers": helpers,
+            "homeassistant.helpers.config_validation": config_validation,
             "homeassistant.helpers.event": event,
         }
     )
