@@ -1,4 +1,4 @@
-![Plant Manager for Home Assistant](docs/plant-manager-banner.svg)
+![Plant Manager for Home Assistant](https://raw.githubusercontent.com/elkamy/ha-plant-manager/main/docs/plant-manager-banner.svg)
 
 # Plant Manager
 
