@@ -6,6 +6,7 @@ from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.event import (
     async_call_later,
     async_track_state_change_event,
@@ -26,6 +27,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["sensor"]
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
