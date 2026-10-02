@@ -222,7 +222,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     battery = float(state.state)
                 except (ValueError, TypeError, OverflowError):
                     return
-                if not math.isfinite(battery):
+                if not math.isfinite(battery) or not 0 <= battery <= 100:
                     return
                 current_threshold = parse_percentage(
                     entry.options.get(
