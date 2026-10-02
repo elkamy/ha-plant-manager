@@ -40,7 +40,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     )
     # Keep the URL version aligned with the integration manifest to invalidate
     # browser caches when the card is updated.
-    add_extra_js_url(hass, f"{card_url}?v=0.2.6")
+    add_extra_js_url(hass, f"{card_url}?v=0.2.7")
     hass.data.setdefault(DOMAIN, {})
     return True
 
