@@ -85,6 +85,17 @@ class ConfigurationHelperTests(unittest.TestCase):
         self.assertFalse(should_start_alert(float("nan"), 30, 30, False, False))
         self.assertFalse(should_start_alert(float("inf"), 30, 30, False, False))
 
+    def test_alert_helper_rejects_out_of_range_current_readings(self):
+        self.assertFalse(should_start_alert(-1, 30, 30, False, False))
+        self.assertFalse(should_start_alert(101, 30, 30, False, False))
+
+    def test_invalid_previous_reading_is_treated_as_missing(self):
+        for previous in (-1, 101, float("nan"), float("inf")):
+            with self.subTest(previous=previous):
+                self.assertTrue(
+                    should_start_alert(20, previous, 30, False, False)
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
