@@ -497,11 +497,15 @@ class PlantManagerCard extends HTMLElement {
   }
 }
 
-customElements.define("plant-manager-card", PlantManagerCard);
+if (!customElements.get("plant-manager-card")) {
+  customElements.define("plant-manager-card", PlantManagerCard);
+}
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "plant-manager-card",
-  name: "Plant Manager",
-  description: "Affiche les plantes avec leur humidité, leur statut et leur batterie."
-});
+if (!window.customCards.some((card) => card.type === "plant-manager-card")) {
+  window.customCards.push({
+    type: "plant-manager-card",
+    name: "Plant Manager",
+    description: "Affiche les plantes avec leur humidité, leur statut et leur batterie."
+  });
+}
