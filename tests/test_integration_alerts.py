@@ -221,6 +221,35 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         hass.services.async_call.assert_not_awaited()
 
 
+    async def test_soil_recovery_resets_pending_alert_delay(self):
+        hass, _entry = await self.setup_integration()
+        entity_id = "sensor.pachira_soil_moisture"
+        callback = hass.state_change_callbacks[entity_id]
+
+        callback(types.SimpleNamespace(data={
+            "old_state": FakeState(31), "new_state": FakeState(25)
+        }))
+        self.assertEqual(len(hass.delayed_callbacks), 1)
+
+        # Recovering cancels the first dry-soil episode.
+        callback(types.SimpleNamespace(data={
+            "old_state": FakeState(25), "new_state": FakeState(35)
+        }))
+        self.assertTrue(hass.cancelled_delayed[0]["cancelled"])
+
+        # Drying again must start a fresh delay, not reuse the old timer.
+        callback(types.SimpleNamespace(data={
+            "old_state": FakeState(35), "new_state": FakeState(20)
+        }))
+        self.assertEqual(len(hass.delayed_callbacks), 2)
+        hass.states.values[entity_id] = FakeState(20)
+
+        await hass.fire_delayed(index=0)
+        hass.services.async_call.assert_not_awaited()
+
+        await hass.fire_delayed(index=1)
+        hass.services.async_call.assert_awaited_once()
+
     async def test_moisture_alert_rearms_after_soil_recovers(self):
         hass, _entry = await self.setup_integration()
         entity_id = "sensor.pachira_soil_moisture"
