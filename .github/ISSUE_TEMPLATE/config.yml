@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation et installation
+    url: https://github.com/elkamy/ha-plant-manager#readme
+    about: Consultez le guide d'installation et la configuration avant de créer une issue.
