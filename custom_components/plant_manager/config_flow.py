@@ -9,7 +9,8 @@ from homeassistant.helpers import selector
 from .const import (
     DOMAIN, CONF_PLANT_NAME, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY,
     CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD, CONF_BATTERY_LOW_THRESHOLD,
-    CONF_NOTIFY_SERVICE, CONF_DELAY, CONF_IMAGE_URL, DEFAULT_LOW_THRESHOLD,
+    CONF_NOTIFY_SERVICE, CONF_DELAY, CONF_IMAGE_URL, CONF_NOTIFICATIONS_ENABLED,
+    DEFAULT_NOTIFICATIONS_ENABLED, DEFAULT_LOW_THRESHOLD,
     DEFAULT_HIGH_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD, DEFAULT_DELAY,
 )
 
@@ -82,6 +83,12 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
             configured_services = [configured_services] if configured_services else []
 
         schema = vol.Schema({
+            vol.Required(
+                CONF_NOTIFICATIONS_ENABLED,
+                default=self.config_entry.options.get(
+                    CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED
+                ),
+            ): bool,
             vol.Required(
                 CONF_LOW_THRESHOLD,
                 default=self.config_entry.options.get(
