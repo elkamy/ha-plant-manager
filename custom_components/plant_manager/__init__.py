@@ -52,6 +52,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "battery_alert_pending": False,
         "moisture_alert_active": False,
         "moisture_alert_pending": False,
+        "moisture_alert_generation": 0,
+        "moisture_alert_cancel": None,
     }
     hass.data[DOMAIN][entry.entry_id] = entry_data
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -90,6 +92,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # A new dry-soil episode can alert only after moisture recovers.
         if current >= threshold:
             entry_data["moisture_alert_active"] = False
+            if entry_data["moisture_alert_pending"]:
+                # A recovered plant starts a new episode if it dries again.
+                entry_data["moisture_alert_generation"] += 1
+                cancel_pending = entry_data.get("moisture_alert_cancel")
+                if cancel_pending is not None:
+                    cancel_pending()
+                entry_data["moisture_alert_cancel"] = None
+                entry_data["moisture_alert_pending"] = False
             return
         if not should_start_alert(
             current,
@@ -112,12 +122,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return
 
         entry_data["moisture_alert_pending"] = True
+        entry_data["moisture_alert_generation"] += 1
+        generation = entry_data["moisture_alert_generation"]
         delay = parse_delay_minutes(
             entry.options.get(CONF_DELAY, DEFAULT_DELAY), DEFAULT_DELAY
         )
 
         async def _send(_now):
+            if generation != entry_data["moisture_alert_generation"]:
+                return
             entry_data["moisture_alert_pending"] = False
+            entry_data["moisture_alert_cancel"] = None
             if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
                 return
             if entry_data["moisture_alert_active"]:
@@ -159,6 +174,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 )
 
         cancel_pending = async_call_later(hass, delay * 60, _send)
+        entry_data["moisture_alert_cancel"] = cancel_pending
         entry.async_on_unload(cancel_pending)
 
     unsubscribe_moisture = async_track_state_change_event(
