@@ -33,9 +33,9 @@ Les seuils d'humidité sont génériques : adaptez-les aux besoins de chaque pla
 
 ## Ajouter la carte Lovelace
 
-1. Copiez www/plant-manager-card.js dans le dossier config/www/.
-2. Dans Paramètres → Tableaux de bord → Ressources, ajoutez /local/plant-manager-card.js avec le type JavaScript Module.
-3. Ajoutez une carte manuelle avec :
+Depuis la version 0.2.5, l'intégration enregistre automatiquement le JavaScript de la carte au démarrage. Il n'est plus nécessaire de copier le fichier dans config/www/ ni d'ajouter une ressource dans le tableau de bord. Après la mise à jour de l'intégration, redémarrez Home Assistant puis rechargez le tableau de bord (Ctrl + F5).
+
+Ajoutez simplement une carte manuelle avec :
 
 ```yaml
 type: custom:plant-manager-card
@@ -59,6 +59,8 @@ Options de la carte :
 - `filter_by: all` : affiche toutes les plantes (par défaut).
 - `filter_by: needs_water` : affiche uniquement les plantes à arroser.
 - `filter_by: attention` : affiche les plantes à arroser, très humides ou indisponibles.
+
+Pour une ancienne installation manuelle, la ressource /local/plant-manager-card.js reste utilisable, mais il est recommandé de supprimer cette ressource après la mise à jour afin de ne conserver que le chargement automatique.
 
 La carte détecte les capteurs de statut créés par l'intégration.
 
