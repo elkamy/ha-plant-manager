@@ -70,6 +70,18 @@ show_images: true
 show_battery: true
 ```
 
+### Fiche détaillée d'une plante
+
+Une seconde carte permet d'afficher une plante individuellement, avec son humidité, les seuils configurés, l'état de la batterie, l'ancienneté de la dernière mesure et la tendance sur 24 h.
+
+```yaml
+type: custom:plant-manager-detail-card
+entity: sensor.monstera_status
+show_history: true
+```
+
+Remplacez `sensor.monstera_status` par l'entité de statut créée pour votre plante. L'option `title` permet de personnaliser le titre ; `show_history: false` masque l'historique.
+
 ### Options disponibles
 
 | Option | Valeurs | Description |
