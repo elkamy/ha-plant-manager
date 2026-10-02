@@ -1,5 +1,17 @@
 # Journal des modifications
 
+## [0.2.7] — 2026-10-02
+
+### Fiabilité
+- Une récupération de l'humidité pendant le délai annule l'alerte d'arrosage en attente ; si le sol redevient sec, un nouveau délai complet démarre.
+- Une remontée de batterie au-dessus du seuil pendant le délai annule l'alerte batterie en attente ; une nouvelle baisse démarre un nouveau délai.
+- Les anciennes mesures hors plage ou non finies ne bloquent plus le déclenchement d'une nouvelle alerte.
+
+### Tests
+- Tests de non-régression sur la récupération puis le retour à un état sec ou à une batterie faible avant l'expiration du délai.
+
+# Journal des modifications
+
 ## [0.2.6] — 2026-10-02
 
 ### Ajouté
