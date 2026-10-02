@@ -1,7 +1,7 @@
 {
   "domain": "plant_manager",
   "name": "Plant Manager",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "documentation": "https://github.com/elkamy/ha-plant-manager",
   "issue_tracker": "https://github.com/elkamy/ha-plant-manager/issues",
   "codeowners": ["@elkamy"],
