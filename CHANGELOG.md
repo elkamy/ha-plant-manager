@@ -1,5 +1,15 @@
 # Journal des modifications
 
+## [0.2.6] — 2026-10-02
+
+### Ajouté
+- Option « Notifications activées » dans les options de chaque plante pour désactiver indépendamment les alertes d'arrosage et de batterie.
+- Les notifications restent activées par défaut, y compris pour les plantes déjà configurées.
+- Vérification du réglage juste avant l'envoi pour empêcher une notification en attente de partir après désactivation.
+
+### Tests
+- Tests de non-déclenchement lorsque les notifications sont désactivées et de suppression d'un envoi en attente.
+
 ## [0.2.5] — 2026-10-02
 
 ### Ajouté
