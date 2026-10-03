@@ -1,9 +1,14 @@
 # Journal des modifications
 
+## [1.2.2] — 2026-10-03
+
+### Corrigé
+- Valider de nouveau la même espèce dans **Options → Espèce et photo** relance la recherche, ce qui permet d'actualiser sa photo (nécessaire pour réparer une photo enregistrée tronquée par la 1.2.0). Auparavant, le formulaire se fermait sans rien faire.
+
 ## [1.2.1] — 2026-10-03
 
 ### Corrigé
-- Les photos d'espèce étaient enregistrées tronquées (seul le haut de l'image s'affichait) : le téléchargement lit désormais l'image en entier. Pour réparer une photo déjà enregistrée, choisissez de nouveau l'espèce dans **Options → Espèce et photo**.
+- Les photos d'espèce étaient enregistrées tronquées (seul le haut de l'image s'affichait) : le téléchargement lit désormais l'image en entier. Pour réparer une photo déjà enregistrée, mettez à jour vers la 1.2.2 puis validez de nouveau l'espèce dans **Options → Espèce et photo**.
 - La recherche d'espèce n'affiche plus les résultats Wikipedia qui ne sont manifestement pas des plantes (pays, entreprises…).
 
 ## [1.2.0] — 2026-10-03
