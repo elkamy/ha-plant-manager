@@ -33,7 +33,8 @@ Plant Manager est une intégration personnalisée Home Assistant pour gérer des
 ## Fonctionnalités
 
 - Configuration de chaque plante depuis l'interface Home Assistant, avec changement des capteurs possible après coup.
-- Sélection d'un capteur d'humidité et, facultativement, d'un capteur de batterie.
+- Ajout d'une plante en choisissant simplement sa sonde : nom, capteur de batterie et pièce sont proposés à partir de l'appareil.
+- Profils de plante (cactus, tropicale, fougère, orchidée…) pour démarrer avec des seuils adaptés.
 - Capteur de statut par plante, utilisable dans vos automatisations.
 - Alertes d'arrosage avec seuil configurable, délai et anti-répétition pendant un épisode de sol sec.
 - Alertes de batterie faible avec seuil configurable et réarmement après récupération.
@@ -68,7 +69,20 @@ Plant Manager est une intégration personnalisée Home Assistant pour gérer des
 
 ## Configuration des plantes et des alertes
 
-Ajoutez chaque plante depuis le flux de configuration, puis ouvrez ses options pour régler les seuils, les notifications et le délai. Pour changer le capteur d'humidité ou de batterie d'une plante existante, utilisez **Reconfigurer** dans le menu ⋮ de la plante.
+L'ajout d'une plante se fait en deux étapes :
+
+1. **Choisissez la sonde d'humidité du sol.**
+2. **Vérifiez les informations proposées** : le nom de la plante et le capteur de batterie sont repris de l'appareil de la sonde, et la plante est placée dans la même pièce que sa sonde. Choisissez ensuite un type de plante, qui fixe les seuils d'humidité de départ :
+
+| Type de plante | Seuil d'arrosage | Seuil « très humide » |
+| --- | --- | --- |
+| Standard | 30 % | 80 % |
+| Cactus et succulentes | 10 % | 50 % |
+| Plante tropicale | 35 % | 85 % |
+| Fougère et plante de sous-bois | 45 % | 90 % |
+| Orchidée | 25 % | 70 % |
+
+Ces valeurs sont des points de départ : chaque sonde mesure différemment, ajustez-les ensuite dans les options de la plante, avec les notifications et le délai. Pour changer le capteur d'humidité ou de batterie d'une plante existante, utilisez **Reconfigurer** dans le menu ⋮ de la plante.
 
 - **Humidité basse** : l'alerte se déclenche au passage sous le seuil, ou au démarrage si la plante est déjà sèche. Une seule notification est envoyée pendant un épisode de sol sec, même après un redémarrage de Home Assistant ; l'humidité doit revenir au seuil ou au-dessus avant qu'un nouvel épisode puisse déclencher une alerte.
 - **Batterie faible** : seuil par défaut de 25 %. L'alerte se réarme lorsque la batterie remonte à 5 points au-dessus du seuil (30 % par défaut).
@@ -153,7 +167,7 @@ show_history: true
 compact: true
 ```
 
-La carte peut signaler une hausse d'humidité d'au moins 15 points comme **arrosage possible (estimation)**. Ce signal n'est pas une détection certaine : un changement de capteur ou une autre cause peut produire une hausse similaire.
+La carte peut signaler une hausse d'humidité d'au moins 15 points comme **arrosage possible (estimation)**. Ce signal n'est pas une détection certaine : un changement de capteur ou une autre cause peut produire une hausse similaire. Une mesure isolée très éloignée des mesures voisines (par exemple 100 → 20 → 100 %) est considérée comme une erreur du capteur : elle n'est ni tracée ni prise pour un arrosage.
 
 ### Fiche détaillée d'une plante
 

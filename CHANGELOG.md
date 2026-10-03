@@ -1,5 +1,15 @@
 # Journal des modifications
 
+## [1.1.0] — 2026-10-03
+
+### Ajouté
+- Ajout d'une plante simplifié : on choisit d'abord la sonde d'humidité, puis le nom de la plante et le capteur de batterie sont proposés à partir de son appareil.
+- Profils de plante (standard, cactus et succulentes, tropicale, fougère, orchidée) qui fixent les seuils d'humidité de départ.
+- Les nouvelles plantes sont placées dans la pièce de leur sonde ; les plantes existantes sans pièce y sont placées une fois lors de la mise à jour, sans modifier une pièce déjà choisie.
+
+### Amélioré
+- Les cartes ignorent une mesure isolée très éloignée de ses voisines (erreur de capteur) : elle n'est plus tracée ni signalée comme un arrosage possible.
+
 ## [1.0.1] — 2026-10-03
 
 ### Corrigé
