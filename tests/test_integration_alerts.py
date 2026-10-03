@@ -422,6 +422,26 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
             hass.services.async_call.await_args.args[:2], ("notify", "send_message")
         )
 
+    async def test_migration_places_existing_plants_in_their_sensor_area_once(self):
+        calls = []
+        areas = types.ModuleType("custom_components.plant_manager.areas")
+        areas.assign_plant_area = lambda hass, entry_id, entity_id: calls.append((entry_id, entity_id))
+        sys.modules[areas.__name__] = areas
+        self.addCleanup(sys.modules.pop, areas.__name__, None)
+        hass = FakeHass()
+        updates = []
+        hass.config_entries.async_update_entry = lambda entry, **changes: updates.append(changes)
+        entry = self.make_entry()
+        entry.version, entry.minor_version = 1, 1
+
+        self.assertTrue(await INTEGRATION.async_migrate_entry(hass, entry))
+        self.assertEqual(calls, [("test-entry", "sensor.pachira_soil_moisture")])
+        self.assertEqual(updates, [{"minor_version": 2}])
+
+        entry.minor_version = 2
+        await INTEGRATION.async_migrate_entry(hass, entry)
+        self.assertEqual(len(calls), 1)
+
     async def test_removing_a_plant_forgets_its_alert_state(self):
         hass = FakeHass()
         hass.states.values["sensor.pachira_soil_moisture"] = FakeState(20)

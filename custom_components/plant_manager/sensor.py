@@ -16,7 +16,10 @@ from .const import (
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
-    async_add_entities([PlantStatusSensor(hass, entry)])
+    from .areas import moisture_area_name
+
+    area = moisture_area_name(hass, entry.data[CONF_MOISTURE_ENTITY])
+    async_add_entities([PlantStatusSensor(hass, entry, suggested_area=area)])
 
 
 class PlantStatusSensor(SensorEntity):
@@ -26,7 +29,9 @@ class PlantStatusSensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = STATUS_OPTIONS
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
+    def __init__(
+        self, hass: HomeAssistant, entry: ConfigEntry, suggested_area: str | None = None
+    ):
         self.hass = hass
         self.entry = entry
         self._attr_unique_id = f"{entry.entry_id}_status"
@@ -35,6 +40,9 @@ class PlantStatusSensor(SensorEntity):
             name=entry.data.get(CONF_PLANT_NAME, entry.title),
             manufacturer="Plant Manager",
             model="Plant monitoring",
+            # Only applied when the device is created: a new plant joins its
+            # sensor's area, an area chosen later by the user is kept.
+            suggested_area=suggested_area,
         )
 
     def _reading(self, entity_id):

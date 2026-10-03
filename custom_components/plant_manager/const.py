@@ -23,3 +23,14 @@ STATUS_NEEDS_WATER = "needs_water"
 STATUS_OK = "ok"
 STATUS_TOO_WET = "too_wet"
 STATUS_OPTIONS = [STATUS_NEEDS_WATER, STATUS_OK, STATUS_TOO_WET]
+
+CONF_PROFILE = "profile"
+DEFAULT_PROFILE = "standard"
+# Starting (low, high) moisture thresholds; generic values to adjust per sensor.
+PROFILES = {
+    "standard": (DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD),
+    "succulent": (10, 50),
+    "tropical": (35, 85),
+    "fern": (45, 90),
+    "orchid": (25, 70),
+}

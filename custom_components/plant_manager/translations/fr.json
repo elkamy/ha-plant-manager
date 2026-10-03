@@ -4,11 +4,18 @@
     "step": {
       "user": {
         "title": "Ajouter une plante",
-        "description": "Ajoutez une plante et sélectionnez ses capteurs.",
+        "description": "Choisissez la sonde d'humidité du sol de la plante. Le nom et le capteur de batterie seront proposés à partir de son appareil.",
+        "data": {
+          "moisture_entity": "Capteur d'humidité du sol"
+        }
+      },
+      "plant": {
+        "title": "Votre plante",
+        "description": "Vérifiez les informations proposées pour la sonde {moisture_entity}. Le profil fixe les seuils d'humidité de départ, modifiables ensuite dans les options.",
         "data": {
           "plant_name": "Nom de la plante",
-          "moisture_entity": "Capteur d'humidité du sol",
-          "battery_entity": "Capteur de batterie (facultatif)"
+          "battery_entity": "Capteur de batterie (facultatif)",
+          "profile": "Type de plante"
         }
       },
       "reconfigure": {
@@ -59,6 +66,17 @@
           "ok": "OK",
           "too_wet": "Très humide"
         }
+      }
+    }
+  },
+  "selector": {
+    "profile": {
+      "options": {
+        "standard": "Standard (30–80 %)",
+        "succulent": "Cactus et succulentes (10–50 %)",
+        "tropical": "Plante tropicale (35–85 %)",
+        "fern": "Fougère et plante de sous-bois (45–90 %)",
+        "orchid": "Orchidée (25–70 %)"
       }
     }
   }

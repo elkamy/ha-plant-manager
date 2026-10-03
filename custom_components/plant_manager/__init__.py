@@ -54,7 +54,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     ])
     # Bump the query version when changing card JavaScript to invalidate caches.
     for _filename, url in cards:
-        add_extra_js_url(hass, f"{url}?v=1.0.1")
+        add_extra_js_url(hass, f"{url}?v=1.1.0")
     hass.data.setdefault(DOMAIN, {})
     return True
 
@@ -305,6 +305,17 @@ def _track_alert(
     current = parse_reading(state.state) if state is not None else None
     if current is not None:
         _process(current, None)
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    if entry.version == 1 and entry.minor_version < 2:
+        # Plants created before 1.1 have no area: give them their sensor's,
+        # once, without overriding an area the user already chose.
+        from .areas import assign_plant_area
+
+        assign_plant_area(hass, entry.entry_id, entry.data[CONF_MOISTURE_ENTITY])
+        hass.config_entries.async_update_entry(entry, minor_version=2)
+    return True
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:

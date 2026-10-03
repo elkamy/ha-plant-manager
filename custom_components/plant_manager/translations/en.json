@@ -4,11 +4,18 @@
     "step": {
       "user": {
         "title": "Add a plant",
-        "description": "Add a plant and select its sensors.",
+        "description": "Choose the plant's soil moisture sensor. The name and battery sensor will be suggested from its device.",
+        "data": {
+          "moisture_entity": "Soil moisture sensor"
+        }
+      },
+      "plant": {
+        "title": "Your plant",
+        "description": "Check the suggested details for the {moisture_entity} sensor. The profile sets the starting moisture thresholds, which you can change later in the options.",
         "data": {
           "plant_name": "Plant name",
-          "moisture_entity": "Soil moisture sensor",
-          "battery_entity": "Battery sensor (optional)"
+          "battery_entity": "Battery sensor (optional)",
+          "profile": "Plant type"
         }
       },
       "reconfigure": {
@@ -59,6 +66,17 @@
           "ok": "OK",
           "too_wet": "Too wet"
         }
+      }
+    }
+  },
+  "selector": {
+    "profile": {
+      "options": {
+        "standard": "Standard (30–80%)",
+        "succulent": "Cacti and succulents (10–50%)",
+        "tropical": "Tropical plant (35–85%)",
+        "fern": "Fern and shade plant (45–90%)",
+        "orchid": "Orchid (25–70%)"
       }
     }
   }

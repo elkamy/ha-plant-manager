@@ -173,6 +173,12 @@ class PlantStatusSensorTests(unittest.TestCase):
                 sensor.hass.states.values["sensor.plant_battery"] = FakeState(raw)
                 self.assertEqual(sensor.extra_state_attributes["battery"], expected)
 
+    def test_plant_device_suggests_the_sensor_area(self):
+        entry = FakeEntry(50)
+        sensor = PlantStatusSensor(entry.hass, entry, suggested_area="Salon")
+        self.assertEqual(sensor._attr_device_info["suggested_area"], "Salon")
+        self.assertIsNone(self.make_sensor(50)._attr_device_info["suggested_area"])
+
     def test_battery_attribute_is_none_without_battery_sensor(self):
         self.assertIsNone(self.make_sensor(50).extra_state_attributes["battery"])
 
