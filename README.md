@@ -4,7 +4,10 @@
 
 **Suivez l'humidité, les besoins en arrosage et la batterie de vos plantes d'intérieur directement dans Home Assistant.**
 
-[![HACS custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
+[![Available in HACS](https://img.shields.io/badge/Available%20in-HACS-41BDF5?logo=home-assistant&logoColor=white)](https://my.home-assistant.io/redirect/hacs_repository/?owner=elkamy&repository=ha-plant-manager&category=integration)
+[![Latest Release](https://img.shields.io/github/v/release/elkamy/ha-plant-manager?label=Release&logo=github)](https://github.com/elkamy/ha-plant-manager/releases)
+[![Last Commit](https://img.shields.io/github/last-commit/elkamy/ha-plant-manager?label=Last%20commit)](https://github.com/elkamy/ha-plant-manager/commits/main)
+[![GitHub Stars](https://img.shields.io/github/stars/elkamy/ha-plant-manager?style=social)](https://github.com/elkamy/ha-plant-manager/stargazers)
 [![Validate](https://github.com/elkamy/ha-plant-manager/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/elkamy/ha-plant-manager/actions/workflows/validate.yml)
 [![Hassfest](https://github.com/elkamy/ha-plant-manager/actions/workflows/hassfest.yml/badge.svg?branch=main)](https://github.com/elkamy/ha-plant-manager/actions/workflows/hassfest.yml)
 [![HACS validation](https://github.com/elkamy/ha-plant-manager/actions/workflows/hacs.yml/badge.svg?branch=main)](https://github.com/elkamy/ha-plant-manager/actions/workflows/hacs.yml)
