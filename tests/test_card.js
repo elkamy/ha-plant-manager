@@ -549,7 +549,7 @@ test("treats unavailable and unknown statuses as needing attention", () => {
 });
 
 test("accepts Home Assistant local, API and media image paths", () => {
-  for (const url of ["/local/a.jpg", "/api/image/b", "/media/local/c.jpg"]) {
+  for (const url of ["/local/a.jpg", "/api/image/b", "/media/local/c.jpg", "/plant_manager/images/d.png"]) {
     const html = renderCard({
       "sensor.a": plant("sensor.a", "ok", { moisture: 50, image_url: url }),
     });

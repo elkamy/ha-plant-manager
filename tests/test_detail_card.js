@@ -208,3 +208,26 @@ test("does not plot a lone sensor glitch", async () => {
   assert.match(card.shadowRoot.innerHTML, /100 % min\./);
   assert.doesNotMatch(card.shadowRoot.innerHTML, /20 % min\./);
 });
+
+test("shows the species under the plant name", () => {
+  const html = render({
+    "sensor.monstera_status": plant("ok", {
+      plant_name: "Mon caoutchouc",
+      species: "Ficus elastica",
+      species_description: "arbre de la famille des Moracées",
+    }),
+  });
+  assert.match(html, /<div class="species"><em>Ficus elastica<\/em> · arbre de la famille des Moracées<\/div>/);
+});
+
+test("does not repeat a species equal to the plant name", () => {
+  const html = render({ "sensor.monstera_status": plant("ok", { species: "monstera" }) });
+  assert.doesNotMatch(html, /class="species"/);
+});
+
+test("displays photos stored by the integration", () => {
+  const html = render({
+    "sensor.monstera_status": plant("ok", { image_url: "/plant_manager/images/0123456789abcdef0123456789abcdef.jpg" }),
+  });
+  assert.match(html, /src="\/plant_manager\/images\/0123456789abcdef0123456789abcdef\.jpg"/);
+});

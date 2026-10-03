@@ -215,7 +215,7 @@ class PlantManagerCard extends HTMLElement {
 
     const safeImageUrl = (value) => {
       const url = String(value || "").trim();
-      if (/^https?:\/\//i.test(url) || /^\/(local|api|media)\//.test(url)) return url;
+      if (/^https?:\/\//i.test(url) || /^\/(local|api|media|plant_manager\/images)\//.test(url)) return url;
       return "";
     };
 

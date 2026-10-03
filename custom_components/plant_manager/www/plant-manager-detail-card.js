@@ -113,8 +113,14 @@ class PlantManagerDetailCard extends HTMLElement {
     const [statusLabel, tone, statusIcon, advice] = PLANT_MANAGER_DETAIL_STATUSES[
       String(plant.state || "").toLowerCase()
     ] || PLANT_MANAGER_DETAIL_UNKNOWN;
+    // The species name is shown only when it adds something to the plant's name.
+    const species = String(a.species || "").trim();
+    const speciesDescription = String(a.species_description || "").trim();
+    const speciesLine = species && species.toLowerCase() !== String(this.config.title || name).toLowerCase()
+      ? `<div class="species"><em>${esc(species)}</em>${speciesDescription ? ` · ${esc(speciesDescription)}` : ""}</div>`
+      : "";
     const imageUrl = String(a.image_url || "").trim();
-    const safeImage = /^https?:\/\//i.test(imageUrl) || /^\/(local|api|media)\//.test(imageUrl)
+    const safeImage = /^https?:\/\//i.test(imageUrl) || /^\/(local|api|media|plant_manager\/images)\//.test(imageUrl)
       ? imageUrl : "";
     const moistureEntity = a.moisture_entity;
     const moistureSource = moistureEntity ? this._hass.states[moistureEntity] : null;
@@ -200,7 +206,7 @@ class PlantManagerDetailCard extends HTMLElement {
       <ha-card>
         <header>
           ${safeImage ? `<img src="${esc(safeImage)}" alt="${esc(name)}" />` : '<div class="plant-icon"><ha-icon icon="mdi:flower"></ha-icon></div>'}
-          <div class="heading"><h2>${esc(this.config.title || name)}</h2><span class="status ${tone}"><ha-icon icon="${statusIcon}"></ha-icon>${statusLabel}</span></div>
+          <div class="heading"><h2>${esc(this.config.title || name)}</h2>${speciesLine}<span class="status ${tone}"><ha-icon icon="${statusIcon}"></ha-icon>${statusLabel}</span></div>
         </header>
         <section class="metric">
           <div class="metric-heading"><span><ha-icon icon="mdi:water-percent"></ha-icon> Humidité du sol</span><strong>${moistureText}</strong></div>
@@ -226,6 +232,7 @@ class PlantManagerDetailCard extends HTMLElement {
         .plant-icon{display:grid;place-items:center;color:var(--success-color,var(--primary-color))}
         .plant-icon ha-icon{--mdc-icon-size:38px}
         .heading{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+        .species{margin-top:-4px;color:var(--secondary-text-color);font-size:12px;line-height:1.35}.species em{font-style:italic}
         h2{margin:0;font-size:20px;line-height:1.25;font-weight:700;overflow-wrap:anywhere}
         .status{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700}
         .status ha-icon{--mdc-icon-size:15px}
