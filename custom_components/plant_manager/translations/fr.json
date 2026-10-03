@@ -10,10 +10,22 @@
           "moisture_entity": "Capteur d'humidité du sol",
           "battery_entity": "Capteur de batterie (facultatif)"
         }
+      },
+      "reconfigure": {
+        "title": "Changer les capteurs",
+        "description": "Sélectionnez les capteurs de {plant_name}. Videz le champ batterie pour ne plus suivre la batterie.",
+        "data": {
+          "moisture_entity": "Capteur d'humidité du sol",
+          "battery_entity": "Capteur de batterie (facultatif)"
+        }
       }
     },
+    "error": {
+      "moisture_already_used": "Ce capteur d'humidité est déjà associé à une autre plante."
+    },
     "abort": {
-      "already_configured": "Ce capteur d'humidité est déjà associé à une plante."
+      "already_configured": "Ce capteur d'humidité est déjà associé à une plante.",
+      "reconfigure_successful": "Les capteurs de la plante ont été mis à jour."
     }
   },
   "options": {
@@ -22,9 +34,11 @@
         "title": "Réglages de la plante",
         "description": "Configurez les seuils, l'image et les notifications. Vous pouvez sélectionner plusieurs appareils destinataires. Le seuil d'humidité élevée doit être supérieur au seuil d'arrosage.",
         "data": {
+          "notifications_enabled": "Notifications activées",
           "low_threshold": "Seuil d'alerte d'arrosage (%)",
           "high_threshold": "Seuil de sol très humide (%)",
-          "notify_service": "Appareils recevant les notifications",
+          "notify_service": "Services de notification (notify.*)",
+          "notify_entities": "Entités de notification",
           "delay_minutes": "Délai avant notification (minutes)",
           "image_url": "URL de l'image de la plante (facultatif)",
           "battery_low_threshold": "Seuil d'alerte de batterie faible (%)"
@@ -33,6 +47,18 @@
     },
     "error": {
       "invalid_thresholds": "Le seuil d'humidité élevée doit être supérieur au seuil d'arrosage."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Statut",
+        "state": {
+          "needs_water": "À arroser",
+          "ok": "OK",
+          "too_wet": "Très humide"
+        }
+      }
     }
   }
 }

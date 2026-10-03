@@ -16,6 +16,8 @@ should_start_alert = ALERTS.should_start_alert
 parse_percentage = ALERTS.parse_percentage
 parse_delay_minutes = ALERTS.parse_delay_minutes
 normalize_notify_services = ALERTS.normalize_notify_services
+normalize_notify_entities = ALERTS.normalize_notify_entities
+parse_reading = ALERTS.parse_reading
 
 
 class ShouldStartAlertTests(unittest.TestCase):
@@ -95,6 +97,35 @@ class ConfigurationHelperTests(unittest.TestCase):
                 self.assertTrue(
                     should_start_alert(20, previous, 30, False, False)
                 )
+
+
+    def test_parse_reading_accepts_only_finite_percentages(self):
+        self.assertEqual(parse_reading("42.5"), 42.5)
+        self.assertEqual(parse_reading(0), 0.0)
+        self.assertEqual(parse_reading("100"), 100.0)
+        for value in ("unknown", "", None, "nan", "inf", -1, 101):
+            with self.subTest(value=value):
+                self.assertIsNone(parse_reading(value))
+
+    def test_notify_entities_keeps_unique_valid_entity_ids(self):
+        self.assertEqual(
+            normalize_notify_entities([
+                "notify.phone",
+                "notify.phone",
+                "notify.",
+                "notify.a.b",
+                "notify. bad",
+                "light.kitchen",
+                None,
+                "notify.tablet",
+            ]),
+            ["notify.phone", "notify.tablet"],
+        )
+
+    def test_notify_entities_accepts_single_string_and_rejects_other_types(self):
+        self.assertEqual(normalize_notify_entities("notify.phone"), ["notify.phone"])
+        self.assertEqual(normalize_notify_entities(""), [])
+        self.assertEqual(normalize_notify_entities(42), [])
 
 
 if __name__ == "__main__":

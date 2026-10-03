@@ -9,10 +9,32 @@ from homeassistant.helpers import selector
 from .const import (
     DOMAIN, CONF_PLANT_NAME, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY,
     CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD, CONF_BATTERY_LOW_THRESHOLD,
-    CONF_NOTIFY_SERVICE, CONF_DELAY, CONF_IMAGE_URL, CONF_NOTIFICATIONS_ENABLED,
-    DEFAULT_NOTIFICATIONS_ENABLED, DEFAULT_LOW_THRESHOLD,
-    DEFAULT_HIGH_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD, DEFAULT_DELAY,
+    CONF_NOTIFY_SERVICE, CONF_NOTIFY_ENTITIES, CONF_DELAY, CONF_IMAGE_URL,
+    CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED,
+    DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD,
+    DEFAULT_BATTERY_LOW_THRESHOLD, DEFAULT_DELAY,
 )
+
+# Soil sensors do not reliably expose a moisture device class, so any sensor
+# can be selected rather than hiding valid ones behind a filter.
+SENSOR_SELECTOR = selector.EntitySelector(
+    selector.EntitySelectorConfig(domain="sensor", multiple=False)
+)
+
+
+def _sensor_fields(defaults: dict) -> dict:
+    battery = defaults.get(CONF_BATTERY_ENTITY)
+    return {
+        vol.Required(
+            CONF_MOISTURE_ENTITY,
+            default=defaults.get(CONF_MOISTURE_ENTITY, vol.UNDEFINED),
+        ): SENSOR_SELECTOR,
+        # A suggested value (not a default) lets the user clear the battery sensor.
+        vol.Optional(
+            CONF_BATTERY_ENTITY,
+            description={"suggested_value": battery} if battery else None,
+        ): SENSOR_SELECTOR,
+    }
 
 
 class PlantManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -30,29 +52,40 @@ class PlantManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 },
             )
 
-        entity_options = [
-            selector.SelectOptionDict(
-                value=state.entity_id,
-                label=f"{state.name} ({state.entity_id})",
-            )
-            for state in self.hass.states.async_all()
-            if state.entity_id.startswith("sensor.")
-        ]
-        entity_options.sort(key=lambda option: option["label"].casefold())
-
         schema = vol.Schema({
             vol.Required(CONF_PLANT_NAME): str,
-            vol.Required(CONF_MOISTURE_ENTITY): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=entity_options,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
-            ),
-            vol.Optional(CONF_BATTERY_ENTITY): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", multiple=False)
-            ),
+            **_sensor_fields({}),
         })
         return self.async_show_form(step_id="user", data_schema=schema)
+
+    async def async_step_reconfigure(self, user_input=None):
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        errors = {}
+        if user_input is not None:
+            moisture_entity = user_input[CONF_MOISTURE_ENTITY]
+            if any(
+                other.unique_id == moisture_entity and other.entry_id != entry.entry_id
+                for other in self._async_current_entries(include_ignore=False)
+            ):
+                errors["base"] = "moisture_already_used"
+            else:
+                data = {**entry.data, CONF_MOISTURE_ENTITY: moisture_entity}
+                if user_input.get(CONF_BATTERY_ENTITY):
+                    data[CONF_BATTERY_ENTITY] = user_input[CONF_BATTERY_ENTITY]
+                else:
+                    data.pop(CONF_BATTERY_ENTITY, None)
+                self.hass.config_entries.async_update_entry(
+                    entry, data=data, unique_id=moisture_entity
+                )
+                await self.hass.config_entries.async_reload(entry.entry_id)
+                return self.async_abort(reason="reconfigure_successful")
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(_sensor_fields(user_input or entry.data)),
+            errors=errors,
+            description_placeholders={"plant_name": entry.title},
+        )
 
     @staticmethod
     @callback
@@ -77,6 +110,8 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
             for service_name in sorted(
                 self.hass.services.async_services().get("notify", {})
             )
+            # This service targets notify entities, chosen in their own field.
+            if service_name != "send_message"
         ]
         configured_services = self.config_entry.options.get(CONF_NOTIFY_SERVICE, [])
         if isinstance(configured_services, str):
@@ -116,6 +151,12 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
                     mode=selector.SelectSelectorMode.DROPDOWN,
                     multiple=True,
                 )
+            ),
+            vol.Optional(
+                CONF_NOTIFY_ENTITIES,
+                default=self.config_entry.options.get(CONF_NOTIFY_ENTITIES, []),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="notify", multiple=True)
             ),
             vol.Required(
                 CONF_DELAY,

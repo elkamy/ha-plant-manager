@@ -28,6 +28,7 @@ class FakeSensorEntity:
 
 
 sensor_api.SensorEntity = FakeSensorEntity
+sensor_api.SensorDeviceClass = types.SimpleNamespace(ENUM="enum")
 sys.modules["homeassistant.components.sensor"] = sensor_api
 
 config_entries = sys.modules.setdefault(
@@ -44,7 +45,7 @@ helpers = sys.modules.setdefault(
     "homeassistant.helpers", types.ModuleType("homeassistant.helpers")
 )
 helpers.__path__ = getattr(helpers, "__path__", [])
-entity_api = types.ModuleType("homeassistant.helpers.entity")
+device_registry_api = types.ModuleType("homeassistant.helpers.device_registry")
 
 
 class DeviceInfo(dict):
@@ -52,13 +53,21 @@ class DeviceInfo(dict):
         super().__init__(**kwargs)
 
 
-entity_api.DeviceInfo = DeviceInfo
-sys.modules["homeassistant.helpers.entity"] = entity_api
+device_registry_api.DeviceInfo = DeviceInfo
+sys.modules["homeassistant.helpers.device_registry"] = device_registry_api
 
 custom_components = sys.modules.setdefault(
     "custom_components", types.ModuleType("custom_components")
 )
 custom_components.__path__ = [str(ROOT / "custom_components")]
+# Import sibling modules without running the integration's __init__.py.
+plant_manager_package = sys.modules.setdefault(
+    "custom_components.plant_manager",
+    types.ModuleType("custom_components.plant_manager"),
+)
+plant_manager_package.__path__ = getattr(
+    plant_manager_package, "__path__", [str(PACKAGE_PATH)]
+)
 
 spec = importlib.util.spec_from_file_location(
     "custom_components.plant_manager.sensor",
@@ -107,37 +116,46 @@ class PlantStatusSensorTests(unittest.TestCase):
         return PlantStatusSensor(entry.hass, entry)
 
     def test_status_is_ok_between_thresholds(self):
-        self.assertEqual(self.make_sensor(50).native_value, "OK")
+        self.assertEqual(self.make_sensor(50).native_value, "ok")
 
     def test_status_requests_watering_below_threshold(self):
-        self.assertEqual(self.make_sensor(29).native_value, "à arroser")
+        self.assertEqual(self.make_sensor(29).native_value, "needs_water")
 
-    def test_status_is_very_wet_above_threshold(self):
-        self.assertEqual(self.make_sensor(81).native_value, "très humide")
+    def test_status_is_too_wet_above_threshold(self):
+        self.assertEqual(self.make_sensor(81).native_value, "too_wet")
 
-    def test_invalid_or_non_finite_moisture_is_unavailable(self):
+    def test_status_values_are_declared_enum_options(self):
+        sensor = self.make_sensor(50)
+        self.assertEqual(sensor._attr_device_class, "enum")
+        self.assertEqual(sensor._attr_options, ["needs_water", "ok", "too_wet"])
+        self.assertEqual(sensor._attr_translation_key, "status")
+
+    def test_invalid_or_non_finite_moisture_is_unknown(self):
         for value in ("unknown", "unavailable", "nan", "inf", "-inf"):
             with self.subTest(value=value):
-                sensor = self.make_sensor(value)
-                self.assertEqual(sensor.native_value, "indisponible")
-                self.assertFalse(sensor.available)
+                self.assertIsNone(self.make_sensor(value).native_value)
 
-    def test_missing_moisture_sensor_is_unavailable(self):
+    def test_missing_moisture_sensor_is_unknown(self):
         sensor = self.make_sensor(50)
         sensor.hass.states.values.clear()
-        self.assertEqual(sensor.native_value, "indisponible")
-        self.assertFalse(sensor.available)
+        self.assertIsNone(sensor.native_value)
 
-    def test_out_of_range_moisture_is_unavailable(self):
+    def test_out_of_range_moisture_is_unknown(self):
         for value in (-1, 101, 150):
             with self.subTest(value=value):
-                sensor = self.make_sensor(value)
-                self.assertEqual(sensor.native_value, "indisponible")
-                self.assertFalse(sensor.available)
+                self.assertIsNone(self.make_sensor(value).native_value)
+
+    def test_invalid_moisture_keeps_attributes_for_the_cards(self):
+        # An unavailable entity would drop its attributes and vanish from the cards.
+        sensor = self.make_sensor("unavailable")
+        self.assertNotEqual(getattr(sensor, "available", True), False)
+        attributes = sensor.extra_state_attributes
+        self.assertTrue(attributes["plant_manager"])
+        self.assertIsNone(attributes["moisture"])
 
     def test_invalid_thresholds_fall_back_to_defaults(self):
         sensor = self.make_sensor(29, {"low_threshold": "invalid", "high_threshold": float("nan")})
-        self.assertEqual(sensor.native_value, "à arroser")
+        self.assertEqual(sensor.native_value, "needs_water")
 
     def test_status_attributes_include_thresholds_and_moisture(self):
         sensor = self.make_sensor(45, {"low_threshold": 25, "high_threshold": 75})
@@ -147,6 +165,36 @@ class PlantStatusSensorTests(unittest.TestCase):
         self.assertEqual(attributes["high_threshold"], 75.0)
         self.assertEqual(attributes["plant_name"], "Pachira")
 
+    def test_battery_attribute_is_a_validated_number(self):
+        for raw, expected in (("42", 42.0), ("unavailable", None), ("150", None)):
+            with self.subTest(raw=raw):
+                sensor = self.make_sensor(50)
+                sensor.entry.data["battery_entity"] = "sensor.plant_battery"
+                sensor.hass.states.values["sensor.plant_battery"] = FakeState(raw)
+                self.assertEqual(sensor.extra_state_attributes["battery"], expected)
+
+    def test_battery_attribute_is_none_without_battery_sensor(self):
+        self.assertIsNone(self.make_sensor(50).extra_state_attributes["battery"])
+
+
+class TranslationTests(unittest.TestCase):
+    def load(self, language):
+        import json
+
+        path = PACKAGE_PATH / "translations" / f"{language}.json"
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def keys(self, value, prefix=""):
+        if not isinstance(value, dict):
+            return {prefix}
+        return set().union(*(self.keys(v, f"{prefix}.{k}") for k, v in value.items()))
+
+    def test_languages_define_the_same_keys(self):
+        self.assertEqual(self.keys(self.load("fr")), self.keys(self.load("en")))
+
+    def test_every_status_option_is_translated(self):
+        states = self.load("en")["entity"]["sensor"]["status"]["state"]
+        self.assertEqual(set(states), {"needs_water", "ok", "too_wet"})
 
 if __name__ == "__main__":
     unittest.main()

@@ -293,6 +293,62 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(hass.cancelled_delayed[0]["cancelled"])
         self.assertNotIn(entity_id, hass.state_change_callbacks)
 
+    async def test_alert_is_sent_to_notify_entities(self):
+        hass = FakeHass()
+        entry = self.make_entry()
+        entry.options = {
+            **entry.options,
+            "notify_service": [],
+            "notify_entities": ["notify.kitchen_display", "notify.phone"],
+        }
+        await INTEGRATION.async_setup_entry(hass, entry)
+        entity_id = "sensor.pachira_soil_moisture"
+        hass.states.values[entity_id] = FakeState(25)
+        callback = hass.state_change_callbacks[entity_id]
+
+        callback(types.SimpleNamespace(data={"old_state": FakeState(31), "new_state": FakeState(25)}))
+        await hass.fire_delayed()
+
+        hass.services.async_call.assert_awaited_once()
+        domain, service, data = hass.services.async_call.await_args.args
+        self.assertEqual((domain, service), ("notify", "send_message"))
+        self.assertEqual(data["entity_id"], ["notify.kitchen_display", "notify.phone"])
+        self.assertIn("Pachira", data["message"])
+
+    async def test_no_alert_is_scheduled_without_notify_target(self):
+        hass = FakeHass()
+        entry = self.make_entry()
+        entry.options = {**entry.options, "notify_service": [], "notify_entities": []}
+        await INTEGRATION.async_setup_entry(hass, entry)
+        callback = hass.state_change_callbacks["sensor.pachira_soil_moisture"]
+
+        callback(types.SimpleNamespace(data={"old_state": FakeState(31), "new_state": FakeState(25)}))
+        self.assertEqual(hass.delayed_callbacks, [])
+
+    async def test_pending_battery_alert_is_cancelled_on_unload(self):
+        hass, entry = await self.setup_integration(with_battery=True)
+        entity_id = "sensor.pachira_battery"
+        hass.states.values[entity_id] = FakeState(20)
+        callback = hass.state_change_callbacks[entity_id]
+        callback(types.SimpleNamespace(data={"old_state": FakeState(40), "new_state": FakeState(20)}))
+
+        for unload_callback in entry.unload_callbacks:
+            unload_callback()
+        self.assertTrue(hass.cancelled_delayed[0]["cancelled"])
+
+    async def test_alert_episodes_do_not_stack_unload_callbacks(self):
+        hass, entry = await self.setup_integration()
+        entity_id = "sensor.pachira_soil_moisture"
+        callback = hass.state_change_callbacks[entity_id]
+        unload_count = len(entry.unload_callbacks)
+
+        for _ in range(3):
+            callback(types.SimpleNamespace(data={"old_state": FakeState(35), "new_state": FakeState(20)}))
+            callback(types.SimpleNamespace(data={"old_state": FakeState(20), "new_state": FakeState(35)}))
+
+        self.assertEqual(len(hass.delayed_callbacks), 3)
+        self.assertEqual(len(entry.unload_callbacks), unload_count)
+
     async def test_reloading_entry_replaces_state_listener_without_stacking(self):
         hass, entry = await self.setup_integration()
         entity_id = "sensor.pachira_soil_moisture"

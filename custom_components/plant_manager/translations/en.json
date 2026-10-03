@@ -1,0 +1,64 @@
+{
+  "title": "Plant Manager",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add a plant",
+        "description": "Add a plant and select its sensors.",
+        "data": {
+          "plant_name": "Plant name",
+          "moisture_entity": "Soil moisture sensor",
+          "battery_entity": "Battery sensor (optional)"
+        }
+      },
+      "reconfigure": {
+        "title": "Change sensors",
+        "description": "Select the sensors of {plant_name}. Clear the battery field to stop tracking the battery.",
+        "data": {
+          "moisture_entity": "Soil moisture sensor",
+          "battery_entity": "Battery sensor (optional)"
+        }
+      }
+    },
+    "error": {
+      "moisture_already_used": "This moisture sensor is already assigned to another plant."
+    },
+    "abort": {
+      "already_configured": "This moisture sensor is already assigned to a plant.",
+      "reconfigure_successful": "The plant sensors have been updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Plant settings",
+        "description": "Configure thresholds, image and notifications. You can select several target devices. The high moisture threshold must be greater than the watering threshold.",
+        "data": {
+          "notifications_enabled": "Notifications enabled",
+          "low_threshold": "Watering alert threshold (%)",
+          "high_threshold": "Very wet soil threshold (%)",
+          "notify_service": "Notification services (notify.*)",
+          "notify_entities": "Notification entities",
+          "delay_minutes": "Delay before notification (minutes)",
+          "image_url": "Plant image URL (optional)",
+          "battery_low_threshold": "Low battery alert threshold (%)"
+        }
+      }
+    },
+    "error": {
+      "invalid_thresholds": "The high moisture threshold must be greater than the watering threshold."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "needs_water": "Needs water",
+          "ok": "OK",
+          "too_wet": "Too wet"
+        }
+      }
+    }
+  }
+}

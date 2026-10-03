@@ -7,6 +7,7 @@ CONF_LOW_THRESHOLD = "low_threshold"
 CONF_HIGH_THRESHOLD = "high_threshold"
 CONF_BATTERY_LOW_THRESHOLD = "battery_low_threshold"
 CONF_NOTIFY_SERVICE = "notify_service"
+CONF_NOTIFY_ENTITIES = "notify_entities"
 CONF_DELAY = "delay_minutes"
 CONF_IMAGE_URL = "image_url"
 
@@ -17,3 +18,8 @@ DEFAULT_DELAY = 10
 
 CONF_NOTIFICATIONS_ENABLED = "notifications_enabled"
 DEFAULT_NOTIFICATIONS_ENABLED = True
+
+STATUS_NEEDS_WATER = "needs_water"
+STATUS_OK = "ok"
+STATUS_TOO_WET = "too_wet"
+STATUS_OPTIONS = [STATUS_NEEDS_WATER, STATUS_OK, STATUS_TOO_WET]

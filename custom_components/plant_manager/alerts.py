@@ -28,6 +28,17 @@ def should_start_alert(
     )
 
 
+def parse_reading(value) -> float | None:
+    """Return a valid 0-100 sensor reading, or None if it cannot be trusted."""
+    try:
+        reading = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(reading) or not 0 <= reading <= 100:
+        return None
+    return reading
+
+
 def parse_percentage(value, default: float) -> float:
     """Parse a percentage, falling back to a safe default if invalid."""
     try:
@@ -71,3 +82,23 @@ def normalize_notify_services(value) -> list[str]:
         ):
             services.append(service.removeprefix("notify."))
     return [f"notify.{service}" for service in services]
+
+
+def normalize_notify_entities(value) -> list[str]:
+    """Return unique notify entity IDs, as accepted by notify.send_message."""
+    if isinstance(value, str):
+        value = [value] if value else []
+    elif not isinstance(value, (list, tuple, set)):
+        return []
+    entities = []
+    for entity_id in value:
+        object_id = entity_id.removeprefix("notify.") if isinstance(entity_id, str) else ""
+        if (
+            entity_id != object_id
+            and object_id
+            and "." not in object_id
+            and object_id.strip() == object_id
+            and entity_id not in entities
+        ):
+            entities.append(entity_id)
+    return entities
