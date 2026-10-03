@@ -1,5 +1,21 @@
 # Journal des modifications
 
+## [1.0.1] — 2026-10-03
+
+### Corrigé
+- L'historique sur 24 h s'affiche enfin : les cartes lisaient la réponse de l'API d'historique de Home Assistant dans un mauvais format et ne trouvaient jamais aucune mesure.
+- Une humidité inchangée sur 24 h est tracée en ligne plate « Stable » au lieu d'« Historique insuffisant », et la courbe s'étend jusqu'à maintenant.
+- Les styles des cartes ne débordent plus sur les autres cartes du tableau de bord (rendu dans un Shadow DOM).
+- Une plante déjà sèche au démarrage, après une modification des options ou à l'activation des notifications déclenche désormais une alerte.
+- Une alerte déjà envoyée n'est pas renvoyée après un redémarrage, et une alerte en attente n'est plus perdue lors d'une modification des options.
+- L'échec d'un destinataire de notification n'empêche plus l'envoi aux autres et est signalé dans le journal.
+- Un nom de plante vide est refusé à la création.
+- La fiche détaillée masque la batterie lorsque la plante n'a pas de capteur de batterie.
+- La carte liste accepte la syntaxe `tap_action: { action: none }`.
+
+### Amélioré
+- Seuils réglables par curseur et délai en minutes dans les options de la plante.
+
 ## [1.0.0] — 2026-10-03
 
 Première version stable de Plant Manager.

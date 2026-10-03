@@ -64,7 +64,7 @@ Plant Manager est une intégration personnalisée Home Assistant pour gérer des
 
 Ajoutez chaque plante depuis le flux de configuration, puis ouvrez ses options pour régler les seuils, les notifications et le délai. Pour changer le capteur d'humidité ou de batterie d'une plante existante, utilisez **Reconfigurer** dans le menu ⋮ de la plante.
 
-- **Humidité basse** : l'alerte se déclenche au passage sous le seuil. Une seule notification est envoyée pendant un épisode de sol sec ; l'humidité doit revenir au seuil ou au-dessus avant qu'un nouvel épisode puisse déclencher une alerte.
+- **Humidité basse** : l'alerte se déclenche au passage sous le seuil, ou au démarrage si la plante est déjà sèche. Une seule notification est envoyée pendant un épisode de sol sec, même après un redémarrage de Home Assistant ; l'humidité doit revenir au seuil ou au-dessus avant qu'un nouvel épisode puisse déclencher une alerte.
 - **Batterie faible** : seuil par défaut de 25 %. L'alerte se réarme lorsque la batterie remonte à 5 points au-dessus du seuil (30 % par défaut).
 - **Délai** : partagé entre les alertes d'arrosage et de batterie, configurable de 0 à 1 440 minutes.
 - **Destinataires** : services `notify.*` (par exemple `notify.mobile_app_telephone`) et/ou entités de notification (envoi via `notify.send_message`). Sans destinataire, aucune alerte n'est envoyée.
@@ -132,7 +132,7 @@ show_battery: true
 | `show_battery` | `true`, `false` | `true` | Affiche ou masque les indicateurs de batterie. |
 | `show_history` | `true`, `false` | `false` | Affiche la courbe et la tendance d'humidité sur 24 h. |
 | `compact` | `true`, `false` | `false` | Réduit les marges et l'espacement vertical. |
-| `tap_action` | `more-info`, `none` | `more-info` | Ouvre « Plus d'informations » au toucher, ou ne fait rien. |
+| `tap_action` | `more-info`, `none` | `more-info` | Ouvre « Plus d'informations » au toucher, ou ne fait rien. La syntaxe `tap_action: { action: none }` est aussi acceptée. |
 
 Exemple compact avec historique et filtre d'attention :
 
