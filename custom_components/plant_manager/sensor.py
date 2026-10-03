@@ -9,7 +9,8 @@ from .alerts import parse_percentage, parse_reading
 from .const import (
     DOMAIN, CONF_PLANT_NAME, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY,
     CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD, CONF_BATTERY_LOW_THRESHOLD,
-    CONF_IMAGE_URL, DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD,
+    CONF_IMAGE_URL, CONF_SPECIES, CONF_SPECIES_DESCRIPTION,
+    DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD,
     DEFAULT_BATTERY_LOW_THRESHOLD, STATUS_NEEDS_WATER, STATUS_OK,
     STATUS_OPTIONS, STATUS_TOO_WET,
 )
@@ -101,6 +102,8 @@ class PlantStatusSensor(SensorEntity):
             "low_threshold": self._low_threshold,
             "high_threshold": self._high_threshold,
             "image_url": self.entry.options.get(CONF_IMAGE_URL, ""),
+            "species": self.entry.options.get(CONF_SPECIES),
+            "species_description": self.entry.options.get(CONF_SPECIES_DESCRIPTION),
         }
 
     async def async_added_to_hass(self):

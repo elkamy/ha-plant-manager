@@ -24,7 +24,7 @@ from .alerts import (
 from .const import (
     DOMAIN, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY, CONF_LOW_THRESHOLD,
     CONF_BATTERY_LOW_THRESHOLD, CONF_NOTIFY_SERVICE, CONF_NOTIFY_ENTITIES,
-    CONF_DELAY, CONF_PLANT_NAME, CONF_NOTIFICATIONS_ENABLED,
+    CONF_DELAY, CONF_IMAGE_URL, CONF_PLANT_NAME, CONF_NOTIFICATIONS_ENABLED,
     DEFAULT_NOTIFICATIONS_ENABLED, DEFAULT_LOW_THRESHOLD,
     DEFAULT_BATTERY_LOW_THRESHOLD, DEFAULT_DELAY,
 )
@@ -48,13 +48,23 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         ("plant-manager-card.js", "/plant_manager/plant-manager-card.js"),
         ("plant-manager-detail-card.js", "/plant_manager/plant-manager-detail-card.js"),
     )
+    from .images import IMAGES_URL, images_path
+
+    # Plant photos are stored under the configuration folder; the folder must
+    # exist before it can be served.
+    photos = images_path(hass)
+    await hass.async_add_executor_job(lambda: photos.mkdir(parents=True, exist_ok=True))
     await hass.http.async_register_static_paths([
-        StaticPathConfig(url, str(www_path / filename), cache_headers=False)
-        for filename, url in cards
+        *(
+            StaticPathConfig(url, str(www_path / filename), cache_headers=False)
+            for filename, url in cards
+        ),
+        # Photo names are unique, so browsers may cache them.
+        StaticPathConfig(IMAGES_URL, str(photos), cache_headers=True),
     ])
     # Bump the query version when changing card JavaScript to invalidate caches.
     for _filename, url in cards:
-        add_extra_js_url(hass, f"{url}?v=1.1.1")
+        add_extra_js_url(hass, f"{url}?v=1.2.0")
     hass.data.setdefault(DOMAIN, {})
     return True
 
@@ -329,6 +339,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    from .images import async_delete_image
+
+    await async_delete_image(hass, entry.options.get(CONF_IMAGE_URL))
     store, store_data = await _async_alert_store(hass)
     if store_data.pop(entry.entry_id, None) is not None:
         store.async_delay_save(lambda: store_data, 1)

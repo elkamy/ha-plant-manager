@@ -179,6 +179,13 @@ class PlantStatusSensorTests(unittest.TestCase):
         self.assertEqual(sensor._attr_device_info["suggested_area"], "Salon")
         self.assertIsNone(self.make_sensor(50)._attr_device_info["suggested_area"])
 
+    def test_species_attributes_come_from_the_options(self):
+        sensor = self.make_sensor(50, {"species": "Ficus elastica", "species_description": "Moracées"})
+        attributes = sensor.extra_state_attributes
+        self.assertEqual(attributes["species"], "Ficus elastica")
+        self.assertEqual(attributes["species_description"], "Moracées")
+        self.assertIsNone(self.make_sensor(50).extra_state_attributes["species"])
+
     def test_battery_attribute_is_none_without_battery_sensor(self):
         self.assertIsNone(self.make_sensor(50).extra_state_attributes["battery"])
 

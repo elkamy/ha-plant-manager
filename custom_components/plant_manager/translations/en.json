@@ -11,11 +11,20 @@
       },
       "plant": {
         "title": "Your plant",
-        "description": "Check the suggested details for the {moisture_entity} sensor. The profile sets the starting moisture thresholds, which you can change later in the options.",
+        "description": "Check the suggested details for the {moisture_entity} sensor. The plant type sets the starting moisture thresholds. Enter the species (\"Ficus elastica\", \"Monstera\"…) to fetch its photo and description, and its thresholds when an OpenPlantbook account is set up.",
         "data": {
           "plant_name": "Plant name",
           "battery_entity": "Battery sensor (optional)",
-          "profile": "Plant type"
+          "profile": "Plant type",
+          "species": "Species (optional)"
+        }
+      },
+      "species": {
+        "title": "Choose the species",
+        "description": "Select the species matching your plant. Select nothing to continue without a species.",
+        "data": {
+          "species_choice": "Species",
+          "apply_thresholds": "Use the species moisture thresholds (OpenPlantbook)"
         }
       },
       "reconfigure": {
@@ -29,7 +38,9 @@
     },
     "error": {
       "moisture_already_used": "This moisture sensor is already assigned to another plant.",
-      "name_required": "Enter a plant name."
+      "name_required": "Enter a plant name.",
+      "cannot_connect": "Could not reach Wikipedia or OpenPlantbook. Check Home Assistant's Internet connection.",
+      "species_not_found": "No species found. Try the scientific name or another common name."
     },
     "abort": {
       "already_configured": "This moisture sensor is already assigned to a plant.",
@@ -39,6 +50,14 @@
   "options": {
     "step": {
       "init": {
+        "title": "Plant settings",
+        "menu_options": {
+          "settings": "Thresholds and notifications",
+          "species": "Species and photo",
+          "plantbook": "OpenPlantbook account"
+        }
+      },
+      "settings": {
         "title": "Plant settings",
         "description": "Configure thresholds, image and notifications. You can select several target devices. The high moisture threshold must be greater than the watering threshold.",
         "data": {
@@ -51,10 +70,38 @@
           "image_url": "Plant image URL (optional)",
           "battery_low_threshold": "Low battery alert threshold (%)"
         }
+      },
+      "species": {
+        "title": "Species and photo",
+        "description": "Change the species to fetch its photo and description (and its thresholds with OpenPlantbook), or upload your own photo, which will be kept. Clear the species to remove it.",
+        "data": {
+          "species": "Species",
+          "photo": "Your photo (optional)"
+        }
+      },
+      "species_select": {
+        "title": "Choose the species",
+        "description": "Select the species matching your plant. Select nothing to continue without a species.",
+        "data": {
+          "species_choice": "Species",
+          "apply_thresholds": "Use the species moisture thresholds (OpenPlantbook)"
+        }
+      },
+      "plantbook": {
+        "title": "OpenPlantbook account",
+        "description": "OpenPlantbook provides moisture thresholds for many species. Create a free account, then copy your API credentials from {url}. They are used for all your plants. Account set up: {status}. Clear both fields to remove it.",
+        "data": {
+          "client_id": "Client ID",
+          "client_secret": "Client secret"
+        }
       }
     },
     "error": {
-      "invalid_thresholds": "The high moisture threshold must be greater than the watering threshold."
+      "invalid_thresholds": "The high moisture threshold must be greater than the watering threshold.",
+      "cannot_connect": "Could not reach Wikipedia or OpenPlantbook. Check Home Assistant's Internet connection.",
+      "species_not_found": "No species found. Try the scientific name or another common name.",
+      "invalid_auth": "OpenPlantbook rejected the credentials. Check the Client ID and Client secret.",
+      "invalid_photo": "This file is not a JPEG, PNG, GIF or WebP image under 5 MB."
     }
   },
   "entity": {

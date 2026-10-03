@@ -34,3 +34,14 @@ PROFILES = {
     "fern": (45, 90),
     "orchid": (25, 70),
 }
+
+# Species and photo (options), filled from Wikipedia or OpenPlantbook.
+CONF_SPECIES = "species"
+CONF_SPECIES_DESCRIPTION = "species_description"
+CONF_SPECIES_SOURCE = "species_source"
+# Form-only fields.
+CONF_SPECIES_CHOICE = "species_choice"
+CONF_APPLY_THRESHOLDS = "apply_thresholds"
+CONF_PHOTO = "photo"
+CONF_PLANTBOOK_CLIENT_ID = "client_id"
+CONF_PLANTBOOK_CLIENT_SECRET = "client_secret"

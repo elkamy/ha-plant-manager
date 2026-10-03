@@ -11,11 +11,20 @@
       },
       "plant": {
         "title": "Votre plante",
-        "description": "Vérifiez les informations proposées pour la sonde {moisture_entity}. Le profil fixe les seuils d'humidité de départ, modifiables ensuite dans les options.",
+        "description": "Vérifiez les informations proposées pour la sonde {moisture_entity}. Le type de plante fixe les seuils d'humidité de départ. Indiquez l'espèce (« Ficus elastica », « Monstera »…) pour récupérer sa photo et sa description, ainsi que ses seuils si un compte OpenPlantbook est configuré.",
         "data": {
           "plant_name": "Nom de la plante",
           "battery_entity": "Capteur de batterie (facultatif)",
-          "profile": "Type de plante"
+          "profile": "Type de plante",
+          "species": "Espèce (facultatif)"
+        }
+      },
+      "species": {
+        "title": "Choisir l'espèce",
+        "description": "Sélectionnez l'espèce correspondant à votre plante. Ne sélectionnez rien pour continuer sans espèce.",
+        "data": {
+          "species_choice": "Espèce",
+          "apply_thresholds": "Utiliser les seuils d'humidité de l'espèce (OpenPlantbook)"
         }
       },
       "reconfigure": {
@@ -29,7 +38,9 @@
     },
     "error": {
       "moisture_already_used": "Ce capteur d'humidité est déjà associé à une autre plante.",
-      "name_required": "Saisissez un nom de plante."
+      "name_required": "Saisissez un nom de plante.",
+      "cannot_connect": "Impossible de joindre Wikipedia ou OpenPlantbook. Vérifiez la connexion Internet de Home Assistant.",
+      "species_not_found": "Aucune espèce trouvée. Essayez le nom scientifique ou un autre nom courant."
     },
     "abort": {
       "already_configured": "Ce capteur d'humidité est déjà associé à une plante.",
@@ -39,6 +50,14 @@
   "options": {
     "step": {
       "init": {
+        "title": "Réglages de la plante",
+        "menu_options": {
+          "settings": "Seuils et notifications",
+          "species": "Espèce et photo",
+          "plantbook": "Compte OpenPlantbook"
+        }
+      },
+      "settings": {
         "title": "Réglages de la plante",
         "description": "Configurez les seuils, l'image et les notifications. Vous pouvez sélectionner plusieurs appareils destinataires. Le seuil d'humidité élevée doit être supérieur au seuil d'arrosage.",
         "data": {
@@ -51,10 +70,38 @@
           "image_url": "URL de l'image de la plante (facultatif)",
           "battery_low_threshold": "Seuil d'alerte de batterie faible (%)"
         }
+      },
+      "species": {
+        "title": "Espèce et photo",
+        "description": "Changez l'espèce pour récupérer sa photo et sa description (et ses seuils avec OpenPlantbook), ou envoyez votre propre photo, qui sera conservée. Videz l'espèce pour la retirer.",
+        "data": {
+          "species": "Espèce",
+          "photo": "Votre photo (facultatif)"
+        }
+      },
+      "species_select": {
+        "title": "Choisir l'espèce",
+        "description": "Sélectionnez l'espèce correspondant à votre plante. Ne sélectionnez rien pour continuer sans espèce.",
+        "data": {
+          "species_choice": "Espèce",
+          "apply_thresholds": "Utiliser les seuils d'humidité de l'espèce (OpenPlantbook)"
+        }
+      },
+      "plantbook": {
+        "title": "Compte OpenPlantbook",
+        "description": "OpenPlantbook fournit les seuils d'humidité de nombreuses espèces. Créez un compte gratuit, puis copiez vos identifiants d'API depuis {url}. Ils servent pour toutes vos plantes. Compte configuré : {status}. Videz les deux champs pour le retirer.",
+        "data": {
+          "client_id": "Client ID",
+          "client_secret": "Client secret"
+        }
       }
     },
     "error": {
-      "invalid_thresholds": "Le seuil d'humidité élevée doit être supérieur au seuil d'arrosage."
+      "invalid_thresholds": "Le seuil d'humidité élevée doit être supérieur au seuil d'arrosage.",
+      "cannot_connect": "Impossible de joindre Wikipedia ou OpenPlantbook. Vérifiez la connexion Internet de Home Assistant.",
+      "species_not_found": "Aucune espèce trouvée. Essayez le nom scientifique ou un autre nom courant.",
+      "invalid_auth": "Identifiants OpenPlantbook refusés. Vérifiez le Client ID et le Client secret.",
+      "invalid_photo": "Ce fichier n'est pas une image JPEG, PNG, GIF ou WebP de moins de 5 Mo."
     }
   },
   "entity": {
