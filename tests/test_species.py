@@ -68,11 +68,19 @@ PLANTBOOK_DETAIL = {
 
 
 class FakeContent:
-    def __init__(self, body):
-        self.body = body
+    """Delivers the body in small chunks, as a network stream does."""
 
-    async def read(self, limit):
-        return self.body[:limit]
+    def __init__(self, body, chunk=7):
+        self.body = body
+        self.chunk = chunk
+
+    async def read(self, limit=-1):
+        # Like aiohttp: only what has "arrived", never the whole body at once.
+        return self.body[: min(self.chunk, limit if limit >= 0 else self.chunk)]
+
+    async def iter_chunked(self, size):
+        for start in range(0, len(self.body), self.chunk):
+            yield self.body[start:start + self.chunk]
 
 
 class FakeResponse:
@@ -163,6 +171,24 @@ class ParsingTests(unittest.TestCase):
         with self.assertRaises(SPECIES.SpeciesError):
             SPECIES.parse_plantbook_detail({"detail": "Not found"})
 
+    def test_non_plant_results_are_dropped(self):
+        # Real case: searching "Kentia" also returned Kentucky, KFC and Kenya.
+        data = {"pages": [
+            {"key": "Kentia", "title": "Kentia", "description": "espèce de plantes"},
+            {"key": "Cyphophoenix_elegans", "title": "Cyphophoenix elegans"},
+            {"key": "Kentucky", "title": "Kentucky", "description": "État des États-Unis"},
+            {"key": "KFC", "title": "Kentucky Fried Chicken",
+             "description": "chaîne de restauration rapide américaine"},
+            {"key": "Kenya", "title": "Kenya", "description": "pays d'Afrique de l'Est"},
+        ]}
+        matches = SPECIES.keep_plants(SPECIES.parse_wikipedia_search(data, "fr"))
+        self.assertEqual([m.name for m in matches], ["Kentia", "Cyphophoenix elegans"])
+
+    def test_results_are_kept_when_none_looks_like_a_plant(self):
+        data = {"pages": [{"key": "Pilea", "title": "Pilea", "description": "nom commun"}]}
+        matches = SPECIES.keep_plants(SPECIES.parse_wikipedia_search(data, "fr"))
+        self.assertEqual([m.name for m in matches], ["Pilea"])
+
     def test_wikipedia_language_follows_home_assistant(self):
         self.assertEqual(SPECIES.wikipedia_language("fr"), "fr")
         self.assertEqual(SPECIES.wikipedia_language("pt-BR"), "pt")
@@ -230,11 +256,13 @@ class DownloadImageTests(unittest.TestCase):
     def download(self, response):
         return run(SPECIES.download_image(FakeSession({("GET", self.URL): response}), self.URL))
 
-    def test_returns_the_image_and_its_extension(self):
+    def test_returns_the_whole_image_and_its_extension(self):
+        # Real case: a photo was saved truncated to its first network chunk.
+        photo = b"\xff\xd8\xff" + bytes(range(256)) * 40 + b"\xff\xd9"
         body, extension = self.download(FakeResponse(
-            headers={"Content-Type": "image/jpeg; charset=binary"}, body=b"\xff\xd8\xffdata"
+            headers={"Content-Type": "image/jpeg; charset=binary"}, body=photo
         ))
-        self.assertEqual((body, extension), (b"\xff\xd8\xffdata", "jpg"))
+        self.assertEqual((body, extension), (photo, "jpg"))
 
     def test_refuses_non_images_and_huge_files(self):
         with self.assertRaises(SPECIES.SpeciesError):

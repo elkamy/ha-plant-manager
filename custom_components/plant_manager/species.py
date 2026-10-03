@@ -7,6 +7,7 @@ response shapes, and the calls take any aiohttp-compatible session.
 from __future__ import annotations
 
 import asyncio
+import re
 from dataclasses import dataclass
 from urllib.parse import quote
 
@@ -76,6 +77,33 @@ def wikipedia_language(language: str | None) -> str:
     """Return the Wikipedia edition to search for a Home Assistant language."""
     base = (language or "").split("-")[0].lower()
     return base if base in WIKIPEDIA_LANGUAGES else "en"
+
+
+# Words that, in a Wikipedia short description, point to a plant ("espèce de
+# plantes", "genus of palms"…), in the languages searched.
+_PLANT_WORDS = (
+    "plant", "espèce", "genre", "arbre", "arbuste", "palmier", "fougère",
+    "orchid", "cactus", "succulent", "liane", "herbacée", "famille",
+    "species", "genus", "tree", "shrub", "palm", "fern", "vine", "herb", "family",
+    "pflanze", "gattung", "baum", "strauch", "farn",
+    "specie", "género", "genere", "árbol", "albero", "arbusto", "planta", "pianta",
+    "soort", "geslacht", "boom", "struik", "espécie", "árvore",
+)
+# A scientific name ("Cyphophoenix elegans") often comes without a description.
+_BINOMIAL = re.compile(r"^[A-Z][a-z]+ [a-z-]+$")
+
+
+def looks_like_plant(match: SpeciesMatch) -> bool:
+    description = match.description.casefold()
+    return any(word in description for word in _PLANT_WORDS) or bool(
+        _BINOMIAL.match(match.name)
+    )
+
+
+def keep_plants(matches: list[SpeciesMatch]) -> list[SpeciesMatch]:
+    """Drop results that are clearly not plants, unless that would drop them all."""
+    plants = [match for match in matches if looks_like_plant(match)]
+    return plants or matches
 
 
 def parse_wikipedia_search(data, language: str) -> list[SpeciesMatch]:
@@ -172,7 +200,7 @@ async def wikipedia_search(session, language: str, query: str, limit: int = 6) -
         params={"q": query, "limit": str(limit)},
         headers={"User-Agent": USER_AGENT},
     )
-    return parse_wikipedia_search(data or {}, language)
+    return keep_plants(parse_wikipedia_search(data or {}, language))
 
 
 async def wikipedia_summary(session, language: str, key: str) -> SpeciesDetails:
@@ -254,11 +282,15 @@ async def download_image(session, url: str) -> tuple[bytes, str]:
                 extension = IMAGE_EXTENSIONS.get(content_type.lower())
                 if extension is None:
                     raise SpeciesError(f"Not an image: {content_type or 'unknown type'}")
-                body = await response.content.read(MAX_IMAGE_BYTES + 1)
+                # content.read(n) only returns what has arrived so far: read the
+                # stream to its end, stopping as soon as it is too large.
+                body = bytearray()
+                async for chunk in response.content.iter_chunked(64 * 1024):
+                    body += chunk
+                    if len(body) > MAX_IMAGE_BYTES:
+                        raise SpeciesError("Image too large")
     except SpeciesError:
         raise
     except Exception as err:  # noqa: BLE001 - timeouts and any aiohttp client error
         raise SpeciesError(str(err) or type(err).__name__) from err
-    if len(body) > MAX_IMAGE_BYTES:
-        raise SpeciesError("Image too large")
-    return body, extension
+    return bytes(body), extension
