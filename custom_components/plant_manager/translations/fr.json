@@ -73,7 +73,7 @@
       },
       "species": {
         "title": "Espèce et photo",
-        "description": "Changez l'espèce pour récupérer sa photo et sa description (et ses seuils avec OpenPlantbook), ou envoyez votre propre photo, qui sera conservée. Videz l'espèce pour la retirer.",
+        "description": "Recherchez l'espèce pour récupérer sa photo et sa description (et ses seuils avec OpenPlantbook) ; validez la même espèce pour actualiser sa photo. Vous pouvez aussi envoyer votre propre photo, qui sera conservée. Videz l'espèce pour la retirer.",
         "data": {
           "species": "Espèce",
           "photo": "Votre photo (facultatif)"

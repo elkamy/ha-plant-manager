@@ -73,7 +73,7 @@
       },
       "species": {
         "title": "Species and photo",
-        "description": "Change the species to fetch its photo and description (and its thresholds with OpenPlantbook), or upload your own photo, which will be kept. Clear the species to remove it.",
+        "description": "Search the species to fetch its photo and description (and its thresholds with OpenPlantbook); submit the same species to refresh its photo. You can also upload your own photo, which will be kept. Clear the species to remove it.",
         "data": {
           "species": "Species",
           "photo": "Your photo (optional)"

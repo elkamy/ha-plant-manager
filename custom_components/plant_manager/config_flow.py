@@ -498,18 +498,21 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             query = (user_input.get(CONF_SPECIES) or "").strip()
             new_options = dict(options)
-            if query != (options.get(CONF_SPECIES) or ""):
-                if query:
-                    try:
-                        self._matches = await _search_species(self.hass, query)
-                    except SpeciesError:
-                        errors["base"] = "cannot_connect"
-                    else:
-                        if not self._matches:
-                            errors[CONF_SPECIES] = "species_not_found"
+            unchanged = query == (options.get(CONF_SPECIES) or "")
+            # Searching again for the same species lets the user refresh its
+            # photo; only sending a photo with the species unchanged skips it.
+            search = bool(query) and not (unchanged and user_input.get(CONF_PHOTO))
+            if search:
+                try:
+                    self._matches = await _search_species(self.hass, query)
+                except SpeciesError:
+                    errors["base"] = "cannot_connect"
                 else:
-                    for key in (CONF_SPECIES, CONF_SPECIES_DESCRIPTION, CONF_SPECIES_SOURCE):
-                        new_options.pop(key, None)
+                    if not self._matches:
+                        errors[CONF_SPECIES] = "species_not_found"
+            elif not query:
+                for key in (CONF_SPECIES, CONF_SPECIES_DESCRIPTION, CONF_SPECIES_SOURCE):
+                    new_options.pop(key, None)
             if not errors and user_input.get(CONF_PHOTO):
                 try:
                     new_options[CONF_IMAGE_URL] = await async_save_upload(
@@ -521,7 +524,7 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
                     self._own_photo = True
             if not errors:
                 self._options = new_options
-                if query and query != (options.get(CONF_SPECIES) or ""):
+                if search:
                     return await self.async_step_species_select()
                 return await self._save(new_options)
 
