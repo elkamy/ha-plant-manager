@@ -1,5 +1,11 @@
 # Journal des modifications
 
+## [1.2.1] — 2026-10-03
+
+### Corrigé
+- Les photos d'espèce étaient enregistrées tronquées (seul le haut de l'image s'affichait) : le téléchargement lit désormais l'image en entier. Pour réparer une photo déjà enregistrée, choisissez de nouveau l'espèce dans **Options → Espèce et photo**.
+- La recherche d'espèce n'affiche plus les résultats Wikipedia qui ne sont manifestement pas des plantes (pays, entreprises…).
+
 ## [1.2.0] — 2026-10-03
 
 ### Ajouté
