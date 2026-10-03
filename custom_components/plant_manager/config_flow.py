@@ -18,6 +18,7 @@ from .const import (
     CONF_SPECIES, CONF_SPECIES_DESCRIPTION, CONF_SPECIES_SOURCE,
     CONF_SPECIES_CHOICE, CONF_APPLY_THRESHOLDS, CONF_PHOTO,
     CONF_PLANTBOOK_CLIENT_ID, CONF_PLANTBOOK_CLIENT_SECRET,
+    CONF_REMINDER_HOURS, CONF_QUIET_START, CONF_QUIET_END, DEFAULT_REMINDER_HOURS,
 )
 from .species import (
     SOURCE_PLANTBOOK,
@@ -74,6 +75,16 @@ PROFILE_SELECTOR = selector.SelectSelector(
 )
 
 
+REMINDER_SELECTOR = selector.NumberSelector(
+    selector.NumberSelectorConfig(
+        min=0,
+        max=48,
+        step=1,
+        unit_of_measurement="h",
+        mode=selector.NumberSelectorMode.BOX,
+    )
+)
+TIME_SELECTOR = selector.TimeSelector()
 PHOTO_SELECTOR = selector.FileSelector(selector.FileSelectorConfig(accept="image/*"))
 SECRET_SELECTOR = selector.TextSelector(
     selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
@@ -414,11 +425,17 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
             else:
                 # Keep the species options this form does not show. The number
                 # selector returns floats; the delay is whole minutes.
-                return await self._save({
+                options = {
                     **self.config_entry.options,
                     **user_input,
                     CONF_DELAY: int(user_input[CONF_DELAY]),
-                })
+                    CONF_REMINDER_HOURS: int(user_input.get(CONF_REMINDER_HOURS) or 0),
+                }
+                # A cleared time field is absent from the input: drop it too.
+                for key in (CONF_QUIET_START, CONF_QUIET_END):
+                    if not user_input.get(key):
+                        options.pop(key, None)
+                return await self._save(options)
 
         services = [
             {
@@ -480,6 +497,21 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
                 CONF_DELAY,
                 default=self.config_entry.options.get(CONF_DELAY, DEFAULT_DELAY),
             ): DELAY_SELECTOR,
+            vol.Required(
+                CONF_REMINDER_HOURS,
+                default=self.config_entry.options.get(
+                    CONF_REMINDER_HOURS, DEFAULT_REMINDER_HOURS
+                ),
+            ): REMINDER_SELECTOR,
+            # Suggested values (not defaults) so the quiet hours can be cleared.
+            vol.Optional(
+                CONF_QUIET_START,
+                description={"suggested_value": self.config_entry.options.get(CONF_QUIET_START)},
+            ): TIME_SELECTOR,
+            vol.Optional(
+                CONF_QUIET_END,
+                description={"suggested_value": self.config_entry.options.get(CONF_QUIET_END)},
+            ): TIME_SELECTOR,
             vol.Optional(
                 CONF_IMAGE_URL,
                 default=self.config_entry.options.get(CONF_IMAGE_URL, ""),

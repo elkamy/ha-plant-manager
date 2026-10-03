@@ -2,6 +2,7 @@
 
 import copy
 import importlib.util
+from datetime import datetime, timezone
 import sys
 import types
 import unittest
@@ -51,22 +52,61 @@ class FakeHass:
         )
         self.state_change_callbacks = {}
         self.delayed_callbacks = []
+        self.delays = []
         self.cancelled_delayed = []
-        # Content of the persisted alert store, shared across restarts in tests.
-        self.stored_alerts = None
+        # Content of the persisted stores, shared across restarts in tests.
+        self.stored = {}
+        self.bus_listeners = {}
+        self.bus = types.SimpleNamespace(async_listen=self._listen)
+        self.dispatched = []
+
+    @property
+    def stored_alerts(self):
+        return self.stored.get("plant_manager.alerts")
+
+    @stored_alerts.setter
+    def stored_alerts(self, value):
+        self.stored["plant_manager.alerts"] = value
+
+    def _listen(self, event_type, callback):
+        self.bus_listeners.setdefault(event_type, []).append(callback)
+        return lambda: self.bus_listeners[event_type].remove(callback)
+
+    def fire(self, event_type, data):
+        for callback in list(self.bus_listeners.get(event_type, [])):
+            callback(types.SimpleNamespace(data=data))
 
     def add_state_listener(self, entity_ids, callback):
+        # Like Home Assistant, several listeners can follow the same entity;
+        # state_change_callbacks[entity_id] calls all of them.
+        self.state_listeners = getattr(self, "state_listeners", {})
         for entity_id in entity_ids:
-            self.state_change_callbacks[entity_id] = callback
+            self.state_listeners.setdefault(entity_id, []).append(callback)
+            self._rebuild(entity_id)
 
         def unsubscribe():
             for entity_id in entity_ids:
-                if self.state_change_callbacks.get(entity_id) is callback:
-                    self.state_change_callbacks.pop(entity_id, None)
+                listeners = self.state_listeners.get(entity_id, [])
+                if callback in listeners:
+                    listeners.remove(callback)
+                self._rebuild(entity_id)
 
         return unsubscribe
 
+    def _rebuild(self, entity_id):
+        listeners = list(self.state_listeners.get(entity_id, []))
+        if not listeners:
+            self.state_change_callbacks.pop(entity_id, None)
+            return
+
+        def fan_out(event):
+            for listener in listeners:
+                listener(event)
+
+        self.state_change_callbacks[entity_id] = fan_out
+
     def schedule(self, delay, callback):
+        self.delays.append(delay)
         self.delayed_callbacks.append(callback)
         cancellation = {"cancelled": False}
         self.cancelled_delayed.append(cancellation)
@@ -81,22 +121,26 @@ class FakeHass:
 
 
 class FakeStore:
-    def __init__(self, hass, version, key):
+    def __init__(self, hass, version, key, private=False):
         self.hass = hass
+        self.key = key
 
     async def async_load(self):
-        return copy.deepcopy(self.hass.stored_alerts)
+        return copy.deepcopy(self.hass.stored.get(self.key))
 
     def async_delay_save(self, data_func, delay):
-        self.hass.stored_alerts = copy.deepcopy(data_func())
+        self.hass.stored[self.key] = copy.deepcopy(data_func())
 
 
 def restarted(hass):
     """Return a fresh Home Assistant double keeping the persisted alert store."""
     new_hass = FakeHass()
-    new_hass.stored_alerts = copy.deepcopy(hass.stored_alerts)
+    new_hass.stored = copy.deepcopy(hass.stored)
     new_hass.states.values = dict(hass.states.values)
     return new_hass
+
+
+FAKE_NOW = [datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)]
 
 
 def load_integration_with_home_assistant_doubles():
@@ -123,6 +167,14 @@ def load_integration_with_home_assistant_doubles():
     )
     storage = types.ModuleType("homeassistant.helpers.storage")
     storage.Store = FakeStore
+    dispatcher = types.ModuleType("homeassistant.helpers.dispatcher")
+    dispatcher.async_dispatcher_send = lambda hass, signal, *args: hass.dispatched.append(signal)
+    util = types.ModuleType("homeassistant.util")
+    util.__path__ = []
+    dt_module = types.ModuleType("homeassistant.util.dt")
+    # Noon: outside of any quiet hours used by the tests unless they say so.
+    dt_module.now = lambda: FAKE_NOW[0]
+    util.dt = dt_module
 
     sys.modules.update(
         {
@@ -133,6 +185,9 @@ def load_integration_with_home_assistant_doubles():
             "homeassistant.helpers.config_validation": config_validation,
             "homeassistant.helpers.event": event,
             "homeassistant.helpers.storage": storage,
+            "homeassistant.helpers.dispatcher": dispatcher,
+            "homeassistant.util": util,
+            "homeassistant.util.dt": dt_module,
         }
     )
 
@@ -452,6 +507,108 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
 
         await INTEGRATION.async_remove_entry(hass, entry)
         self.assertNotIn(entry.entry_id, hass.stored_alerts)
+
+    def moisture(self, hass, old, new):
+        entity_id = "sensor.pachira_soil_moisture"
+        hass.states.values[entity_id] = FakeState(new)
+        hass.state_change_callbacks[entity_id](types.SimpleNamespace(data={
+            "old_state": FakeState(old) if old is not None else None,
+            "new_state": FakeState(new),
+        }))
+
+    async def setup_with(self, **options):
+        hass = FakeHass()
+        entry = self.make_entry()
+        entry.options = {**entry.options, **options}
+        await INTEGRATION.async_setup_entry(hass, entry)
+        return hass, entry
+
+    async def test_mobile_app_alerts_offer_actions_and_other_targets_stay_plain(self):
+        hass, entry = await self.setup_with(
+            notify_service=["notify.mobile_app_phone", "notify.email"],
+            notify_entities=["notify.tablet"],
+        )
+        self.moisture(hass, 31, 25)
+        await hass.fire_delayed()
+
+        calls = {c.args[1]: c.args[2] for c in hass.services.async_call.await_args_list}
+        actions = calls["mobile_app_phone"]["data"]["actions"]
+        self.assertEqual(
+            [a["action"] for a in actions],
+            ["PLANT_MANAGER_WATERED_test-entry", "PLANT_MANAGER_SNOOZE_test-entry"],
+        )
+        self.assertEqual(calls["mobile_app_phone"]["data"]["tag"], "plant_manager_test-entry_moisture")
+        self.assertNotIn("data", calls["email"])
+        self.assertNotIn("data", calls["send_message"])
+
+    async def test_reminder_repeats_while_the_plant_stays_dry(self):
+        hass, _entry = await self.setup_with(reminder_hours=3)
+        self.moisture(hass, 31, 25)
+        await hass.fire_delayed(0)
+        self.assertEqual(hass.delays[1], 3 * 3600)
+
+        await hass.fire_delayed(1)
+        self.assertEqual(hass.services.async_call.await_count, 2)
+        self.assertEqual(hass.services.async_call.await_args.args[2]["title"], "🌱 Toujours à arroser")
+        # Still dry: the next reminder is scheduled.
+        self.assertEqual(len(hass.delayed_callbacks), 3)
+
+    async def test_no_reminder_without_the_option(self):
+        hass, _entry = await self.setup_with()
+        self.moisture(hass, 31, 25)
+        await hass.fire_delayed(0)
+        self.assertEqual(len(hass.delayed_callbacks), 1)
+
+    async def test_recovery_cancels_the_reminder(self):
+        hass, _entry = await self.setup_with(reminder_hours=3)
+        self.moisture(hass, 31, 25)
+        await hass.fire_delayed(0)
+        self.moisture(hass, 25, 60)
+        self.assertTrue(hass.cancelled_delayed[1]["cancelled"])
+
+    async def test_watered_action_stops_reminders_and_records_the_watering(self):
+        hass, entry = await self.setup_with(reminder_hours=3)
+        self.moisture(hass, 31, 25)
+        await hass.fire_delayed(0)
+
+        hass.fire("mobile_app_notification_action", {"action": "PLANT_MANAGER_WATERED_test-entry"})
+        self.assertTrue(hass.cancelled_delayed[1]["cancelled"])
+        tracker = hass.data["plant_manager"]["test-entry"]["watering"]
+        self.assertIsNotNone(tracker.last_watered)
+        self.assertIn("plant_manager_test-entry_updated", hass.dispatched)
+        self.assertIsNotNone(hass.stored["plant_manager.watering"]["test-entry"]["last_watered"])
+        # Another plant's action is ignored.
+        hass.fire("mobile_app_notification_action", {"action": "PLANT_MANAGER_SNOOZE_other"})
+        self.assertEqual(len(hass.delayed_callbacks), 2)
+
+    async def test_snooze_action_reminds_once_in_two_hours(self):
+        hass, _entry = await self.setup_with()
+        self.moisture(hass, 31, 25)
+        await hass.fire_delayed(0)
+
+        hass.fire("mobile_app_notification_action", {"action": "PLANT_MANAGER_SNOOZE_test-entry"})
+        self.assertEqual(hass.delays[-1], 2 * 3600)
+        await hass.fire_delayed(1)
+        self.assertEqual(hass.services.async_call.await_count, 2)
+        # Without the reminder option, the snooze does not repeat.
+        self.assertEqual(len(hass.delayed_callbacks), 2)
+
+    async def test_alert_due_during_quiet_hours_waits_for_their_end(self):
+        FAKE_NOW[0] = datetime(2026, 10, 3, 23, 0, tzinfo=timezone.utc)
+        self.addCleanup(FAKE_NOW.__setitem__, 0, datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc))
+        hass, _entry = await self.setup_with(quiet_start="22:00:00", quiet_end="07:00:00")
+        self.moisture(hass, 31, 25)
+        # Due at 23:01 (one-minute delay), sent at 07:00.
+        self.assertEqual(hass.delays[0], 8 * 3600)
+
+    async def test_moisture_rise_is_recorded_as_a_watering(self):
+        hass, _entry = await self.setup_with()
+        tracker = hass.data["plant_manager"]["test-entry"]["watering"]
+        for old, new in ((None, 30), (30, 31), (31, 70), (70, 69)):
+            # Readings an hour apart, as their timestamps tell.
+            tracker.readings = [(t - 3600, v) for t, v in tracker.readings]
+            self.moisture(hass, old, new)
+        self.assertIsNotNone(tracker.last_watered)
 
     async def test_pending_battery_alert_is_cancelled_on_unload(self):
         hass, entry = await self.setup_integration(with_battery=True)

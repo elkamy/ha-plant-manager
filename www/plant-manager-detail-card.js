@@ -39,6 +39,22 @@ const plantManagerDetailWithoutSpikes = (samples) => {
   return samples.map((sample, index) => (spikes.has(index) ? { ...sample, value: NaN } : sample));
 };
 
+// "il y a 3 j" / "dans ~4 j" from the ISO dates published by the status sensor.
+const plantManagerDetailSince = (iso, now = Date.now()) => {
+  const time = Date.parse(iso || "");
+  if (!Number.isFinite(time)) return null;
+  const hours = Math.max(0, (now - time) / 3600000);
+  return hours < 1 ? "à l’instant" : hours < 24 ? `il y a ${Math.floor(hours)} h`
+    : `il y a ${Math.floor(hours / 24)} j`;
+};
+const plantManagerDetailUntil = (iso, now = Date.now()) => {
+  const time = Date.parse(iso || "");
+  if (!Number.isFinite(time)) return null;
+  const hours = (time - now) / 3600000;
+  return hours <= 1 ? "maintenant" : hours < 24 ? `dans ~${Math.round(hours)} h`
+    : `dans ~${Math.round(hours / 24)} j`;
+};
+
 class PlantManagerDetailCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("plant-manager-detail-card-editor");
@@ -119,6 +135,8 @@ class PlantManagerDetailCard extends HTMLElement {
     const speciesLine = species && species.toLowerCase() !== String(this.config.title || name).toLowerCase()
       ? `<div class="species"><em>${esc(species)}</em>${speciesDescription ? ` · ${esc(speciesDescription)}` : ""}</div>`
       : "";
+    const watered = plantManagerDetailSince(a.last_watered);
+    const nextWatering = plantManagerDetailUntil(a.next_watering);
     const imageUrl = String(a.image_url || "").trim();
     const safeImage = /^https?:\/\//i.test(imageUrl) || /^\/(local|api|media|plant_manager\/images)\//.test(imageUrl)
       ? imageUrl : "";
@@ -216,6 +234,10 @@ class PlantManagerDetailCard extends HTMLElement {
           <div class="thresholds"><span>Seuil bas : ${Number.isFinite(low) ? `${low} %` : "—"}</span><span>Seuil haut : ${Number.isFinite(high) ? `${high} %` : "—"}</span></div>
           <div class="updated">Dernière mesure : ${ageLabel}</div>
         </section>
+        ${watered || nextWatering ? `<section class="watering">
+          <div><span>Dernier arrosage</span><strong>${watered ? watered.replace(/^./, (c) => c.toUpperCase()) : "—"}</strong></div>
+          <div><span>Prochain arrosage</span><strong>${nextWatering ? nextWatering.replace(/^./, (c) => c.toUpperCase()) : "—"}</strong></div>
+        </section>` : ""}
         <section class="history">${chart}</section>
         ${a.battery_entity ? `<section class="battery-row">
           <div class="battery-icon"><ha-icon icon="${batteryLow ? "mdi:battery-alert" : "mdi:battery-medium"}"></ha-icon></div>
@@ -250,6 +272,9 @@ class PlantManagerDetailCard extends HTMLElement {
         .fill.wet{background:var(--warning-color,#b7791f)}.fill.neutral{background:var(--disabled-text-color,#9e9e9e)}
         .thresholds{display:flex;justify-content:space-between;gap:8px;margin-top:9px;color:var(--secondary-text-color);font-size:11px}
         .updated{margin-top:7px;color:var(--disabled-text-color,var(--secondary-text-color));font-size:11px}
+        .watering{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 18px;border-top:1px solid var(--divider-color)}
+        .watering div{display:flex;flex-direction:column;gap:3px}.watering span{color:var(--secondary-text-color);font-size:11px}
+        .watering strong{font-size:15px}
         .history{padding:14px 18px;border-top:1px solid var(--divider-color)}
         .history-heading,.history-range{display:flex;justify-content:space-between;gap:8px;font-size:12px}
         .history-heading{color:var(--secondary-text-color)}.history-heading strong{color:var(--primary-text-color)}

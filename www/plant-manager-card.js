@@ -48,6 +48,22 @@ const plantManagerWithoutSpikes = (samples) => {
   return samples.map((sample, index) => (spikes.has(index) ? { ...sample, value: NaN } : sample));
 };
 
+// "il y a 3 j" / "dans ~4 j" from the ISO dates published by the status sensor.
+const plantManagerSince = (iso, now = Date.now()) => {
+  const time = Date.parse(iso || "");
+  if (!Number.isFinite(time)) return null;
+  const hours = Math.max(0, (now - time) / 3600000);
+  return hours < 1 ? "à l’instant" : hours < 24 ? `il y a ${Math.floor(hours)} h`
+    : `il y a ${Math.floor(hours / 24)} j`;
+};
+const plantManagerUntil = (iso, now = Date.now()) => {
+  const time = Date.parse(iso || "");
+  if (!Number.isFinite(time)) return null;
+  const hours = (time - now) / 3600000;
+  return hours <= 1 ? "maintenant" : hours < 24 ? `dans ~${Math.round(hours)} h`
+    : `dans ~${Math.round(hours / 24)} j`;
+};
+
 const plantManagerStatus = (plant) =>
   PLANT_MANAGER_STATUSES[String(plant?.state || "").toLowerCase()]
   || PLANT_MANAGER_UNKNOWN_STATUS;
@@ -253,6 +269,14 @@ class PlantManagerCard extends HTMLElement {
           : `il y a ${Math.floor(ageMinutes / 1440)} j`;
         updatedText = `<div class="updated">Dernière mesure ${ageLabel}</div>`;
       }
+      const watered = plantManagerSince(a.last_watered);
+      const nextWatering = plantManagerUntil(a.next_watering);
+      const wateringMarkup = watered || nextWatering
+        ? `<div class="watering"><ha-icon icon="mdi:watering-can-outline"></ha-icon><span>${[
+          watered ? `Arrosée ${watered}` : "",
+          nextWatering ? `prochain arrosage ${nextWatering}` : "",
+        ].filter(Boolean).join(" · ")}</span></div>`
+        : "";
       requestHistory(historyEntity);
       const historyEntry = showHistory && historyEntity ? this._historyCache.get(historyEntity) : null;
       const history = historyEntry ? historyEntry.points : null;
@@ -313,6 +337,7 @@ class PlantManagerCard extends HTMLElement {
           </div>
           ${showBattery && battery ? `<div class="extras">${battery}</div>` : ""}
           ${historyMarkup}
+          ${wateringMarkup}
           <div class="advice"><ha-icon icon="mdi:lightbulb-outline"></ha-icon><span>${advice}</span></div>
           ${updatedText}
         </div>
@@ -518,6 +543,9 @@ class PlantManagerCard extends HTMLElement {
         .updated { margin-top: 4px; color: var(--disabled-text-color, var(--secondary-text-color)); font-size: 10px; }
         .compact .history { margin-top: 6px; padding: 5px 7px 3px; }
         .compact .history svg { height: 18px; }
+        .watering { display: flex; align-items: center; gap: 5px; margin-top: 8px; color: var(--secondary-text-color); font-size: 11px; }
+        .watering ha-icon { --mdc-icon-size: 14px; flex: 0 0 auto; color: var(--info-color, var(--primary-color)); }
+        .watering span::first-letter { text-transform: uppercase; }
         .extras { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
         .battery { display: inline-flex; align-items: center; gap: 4px; color: var(--secondary-text-color); font-size: 11px; }
         .battery.low { color: var(--error-color, #c62828); font-weight: 700; }

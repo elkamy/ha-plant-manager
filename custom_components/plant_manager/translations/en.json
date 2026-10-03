@@ -59,7 +59,7 @@
       },
       "settings": {
         "title": "Plant settings",
-        "description": "Configure thresholds, image and notifications. You can select several target devices. The high moisture threshold must be greater than the watering threshold.",
+        "description": "Configure thresholds, image and notifications. You can select several target devices. The high moisture threshold must be greater than the watering threshold. During quiet hours, notifications wait for the end of the period.",
         "data": {
           "notifications_enabled": "Notifications enabled",
           "low_threshold": "Watering alert threshold (%)",
@@ -68,7 +68,10 @@
           "notify_entities": "Notification entities",
           "delay_minutes": "Delay before notification (minutes)",
           "image_url": "Plant image URL (optional)",
-          "battery_low_threshold": "Low battery alert threshold (%)"
+          "battery_low_threshold": "Low battery alert threshold (%)",
+          "reminder_hours": "Remind if still dry after (hours, 0 = never)",
+          "quiet_start": "Quiet hours start (optional)",
+          "quiet_end": "Quiet hours end (optional)"
         }
       },
       "species": {
@@ -113,6 +116,17 @@
           "ok": "OK",
           "too_wet": "Too wet"
         }
+      },
+      "last_watered": {
+        "name": "Last watered"
+      },
+      "next_watering": {
+        "name": "Next watering"
+      }
+    },
+    "button": {
+      "watered": {
+        "name": "Mark as watered"
       }
     }
   },

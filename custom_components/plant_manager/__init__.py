@@ -2,16 +2,20 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
+from datetime import timedelta
 from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import (
     async_call_later,
     async_track_state_change_event,
 )
 from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 
 from .alerts import (
     normalize_notify_entities,
@@ -19,23 +23,27 @@ from .alerts import (
     parse_delay_minutes,
     parse_percentage,
     parse_reading,
+    seconds_until_allowed,
     should_start_alert,
 )
 from .const import (
     DOMAIN, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY, CONF_LOW_THRESHOLD,
     CONF_BATTERY_LOW_THRESHOLD, CONF_NOTIFY_SERVICE, CONF_NOTIFY_ENTITIES,
     CONF_DELAY, CONF_IMAGE_URL, CONF_PLANT_NAME, CONF_NOTIFICATIONS_ENABLED,
+    CONF_QUIET_END, CONF_QUIET_START, CONF_REMINDER_HOURS,
     DEFAULT_NOTIFICATIONS_ENABLED, DEFAULT_LOW_THRESHOLD,
-    DEFAULT_BATTERY_LOW_THRESHOLD, DEFAULT_DELAY,
+    DEFAULT_BATTERY_LOW_THRESHOLD, DEFAULT_DELAY, DEFAULT_REMINDER_HOURS,
+    ACTION_SNOOZE, ACTION_WATERED, SNOOZE_HOURS, signal_updated,
 )
+from .watering import WateringTracker
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "button"]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 ALERT_STORE_KEY = f"{DOMAIN}.alerts"
-ALERT_STORE_VERSION = 1
-_ALERT_STORE = "_alert_store"
+WATERING_STORE_KEY = f"{DOMAIN}.watering"
+STORE_VERSION = 1
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -64,45 +72,75 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     ])
     # Bump the query version when changing card JavaScript to invalidate caches.
     for _filename, url in cards:
-        add_extra_js_url(hass, f"{url}?v=1.2.2")
+        add_extra_js_url(hass, f"{url}?v=1.3.0")
     hass.data.setdefault(DOMAIN, {})
     return True
 
 
-async def _async_alert_store(hass: HomeAssistant) -> tuple[Store, dict]:
-    """Return the store remembering which alert episodes were already notified."""
+async def _async_store(hass: HomeAssistant, key: str) -> tuple[Store, dict]:
+    """Return a store shared by all plants, with its loaded data."""
     domain_data = hass.data.setdefault(DOMAIN, {})
-    if _ALERT_STORE not in domain_data:
+    cache_key = f"_store_{key}"
+    if cache_key not in domain_data:
         # Entries set up concurrently share one load through this future.
         loaded = asyncio.get_running_loop().create_future()
-        domain_data[_ALERT_STORE] = loaded
-        store = Store(hass, ALERT_STORE_VERSION, ALERT_STORE_KEY)
+        domain_data[cache_key] = loaded
+        store = Store(hass, STORE_VERSION, key)
         try:
             data = await store.async_load() or {}
         except Exception:  # noqa: BLE001 - a corrupt file must not block setup
-            _LOGGER.warning("Plant Manager: could not load alert state", exc_info=True)
+            _LOGGER.warning("Plant Manager: could not load %s", key, exc_info=True)
             data = {}
         loaded.set_result((store, data))
-    return await domain_data[_ALERT_STORE]
+    return await domain_data[cache_key]
+
+
+def _state_time(state) -> float:
+    """When a state was reported, falling back to now."""
+    updated = getattr(state, "last_updated", None)
+    return updated.timestamp() if updated is not None else time.time()
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    store, store_data = await _async_alert_store(hass)
-    entry_data = {}
+    alert_store, alert_data = await _async_store(hass, ALERT_STORE_KEY)
+    watering_store, watering_data = await _async_store(hass, WATERING_STORE_KEY)
+    tracker = WateringTracker.from_dict(watering_data.get(entry.entry_id))
+    entry_data = {"watering": tracker}
     for kind in ("moisture", "battery"):
         entry_data.update({
             f"{kind}_alert_active": False,
             f"{kind}_alert_pending": False,
             f"{kind}_alert_generation": 0,
             f"{kind}_alert_cancel": None,
+            f"{kind}_reminder_cancel": None,
         })
     hass.data[DOMAIN][entry.entry_id] = entry_data
+
+    @callback
+    def _watering_changed() -> None:
+        watering_data[entry.entry_id] = tracker.as_dict()
+        watering_store.async_delay_save(lambda: watering_data, 30)
+        async_dispatcher_send(hass, signal_updated(entry.entry_id))
+
+    @callback
+    def _mark_watered() -> None:
+        """A watering reported by the user (button or notification action)."""
+        tracker.mark_watered(time.time())
+        cancel_reminder = entry_data.get("moisture_cancel_reminder")
+        if cancel_reminder is not None:
+            cancel_reminder()
+        _watering_changed()
+
+    entry_data["mark_watered"] = _mark_watered
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     @callback
     def _cancel_pending_alerts():
-        # A single unload hook cancels whichever alert is still waiting.
-        for key in ("moisture_alert_cancel", "battery_alert_cancel"):
+        # A single unload hook cancels whichever alert or reminder is waiting.
+        for key in (
+            "moisture_alert_cancel", "battery_alert_cancel",
+            "moisture_reminder_cancel", "battery_reminder_cancel",
+        ):
             cancel_pending = entry_data.get(key)
             if cancel_pending is not None:
                 cancel_pending()
@@ -110,14 +148,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.async_on_unload(_cancel_pending_alerts)
 
-    notified = store_data.setdefault(entry.entry_id, {})
+    notified = alert_data.setdefault(entry.entry_id, {})
 
     @callback
     def _remember_notified(kind: str, value: bool) -> None:
         # Persisted so a restart or reload neither repeats nor loses an alert.
         if notified.get(kind, False) != value:
             notified[kind] = value
-            store.async_delay_save(lambda: store_data, 1)
+            alert_store.async_delay_save(lambda: alert_data, 1)
+
+    moisture_entity = entry.data[CONF_MOISTURE_ENTITY]
+
+    @callback
+    def _record_moisture(event) -> None:
+        new_state = event.data.get("new_state")
+        value = parse_reading(new_state.state) if new_state is not None else None
+        if value is None:
+            return
+        if tracker.add(_state_time(new_state), value):
+            # The plant was watered: no need to remind the user any more.
+            cancel_reminder = entry_data.get("moisture_cancel_reminder")
+            if cancel_reminder is not None:
+                cancel_reminder()
+        _watering_changed()
+
+    entry.async_on_unload(
+        async_track_state_change_event(hass, [moisture_entity], _record_moisture)
+    )
+    current_state = hass.states.get(moisture_entity)
+    current = parse_reading(current_state.state) if current_state is not None else None
+    if current is not None:
+        tracker.add(_state_time(current_state), current)
 
     plant_name = entry.data.get(CONF_PLANT_NAME, entry.title)
     _track_alert(
@@ -127,7 +188,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         notified,
         _remember_notified,
         kind="moisture",
-        entity_id=entry.data[CONF_MOISTURE_ENTITY],
+        entity_id=moisture_entity,
         threshold_key=CONF_LOW_THRESHOLD,
         default_threshold=DEFAULT_LOW_THRESHOLD,
         rearm_offset=0,
@@ -135,6 +196,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "🌱 Plante à arroser",
             f"{plant_name} a besoin d'eau. Humidité du sol : {moisture:g} %.",
         ),
+        build_reminder=lambda moisture: (
+            "🌱 Toujours à arroser",
+            f"{plant_name} attend toujours son arrosage. Humidité du sol : {moisture:g} %.",
+        ),
+        watered_since=lambda since: (
+            tracker.last_watered is not None and tracker.last_watered >= since
+        ),
+        actions=[
+            {"action": f"{ACTION_WATERED}_{entry.entry_id}", "title": "C'est arrosé"},
+            {"action": f"{ACTION_SNOOZE}_{entry.entry_id}", "title": f"Rappeler dans {SNOOZE_HOURS} h"},
+        ],
     )
 
     battery_entity = entry.data.get(CONF_BATTERY_ENTITY)
@@ -158,6 +230,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ),
         )
 
+    @callback
+    def _notification_action(event) -> None:
+        action = event.data.get("action")
+        if action == f"{ACTION_WATERED}_{entry.entry_id}":
+            _mark_watered()
+        elif action == f"{ACTION_SNOOZE}_{entry.entry_id}":
+            entry_data["moisture_snooze"]()
+
+    entry.async_on_unload(
+        hass.bus.async_listen("mobile_app_notification_action", _notification_action)
+    )
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
@@ -173,14 +256,37 @@ def _notify_targets(entry: ConfigEntry) -> tuple[list[str], list[str]]:
     )
 
 
+def _reminder_hours(entry: ConfigEntry) -> float:
+    try:
+        hours = float(entry.options.get(CONF_REMINDER_HOURS, DEFAULT_REMINDER_HOURS))
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+    return hours if 0 < hours <= 168 else 0.0
+
+
+def _delay_outside_quiet_hours(entry: ConfigEntry, seconds: float) -> float:
+    """Push a delay past the quiet hours when it would end inside them."""
+    target = dt_util.now() + timedelta(seconds=seconds)
+    return seconds + seconds_until_allowed(
+        target, entry.options.get(CONF_QUIET_START), entry.options.get(CONF_QUIET_END)
+    )
+
+
 async def _send_notifications(
-    hass: HomeAssistant, entry: ConfigEntry, title: str, message: str
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    title: str,
+    message: str,
+    mobile_data: dict | None = None,
 ) -> None:
     services, entities = _notify_targets(entry)
-    calls = [
-        (*service.split(".", 1), {"title": title, "message": message})
-        for service in services
-    ]
+    calls = []
+    for service in services:
+        data = {"title": title, "message": message}
+        # Action buttons and tags are understood by the companion apps only.
+        if mobile_data and service.startswith("notify.mobile_app_"):
+            data["data"] = mobile_data
+        calls.append((*service.split(".", 1), data))
     if entities:
         calls.append((
             "notify",
@@ -213,22 +319,76 @@ def _track_alert(
     default_threshold: float,
     rearm_offset: float,
     build_message,
+    build_reminder=None,
+    watered_since=None,
+    actions: list[dict] | None = None,
 ) -> None:
-    """Notify once per low-value episode of a sensor, after the configured delay."""
+    """Notify once per low-value episode of a sensor, after the configured delay.
+
+    With ``build_reminder``, the alert is repeated every few hours (option)
+    while the value stays low and no watering was seen since the alert.
+    """
     active_key = f"{kind}_alert_active"
     pending_key = f"{kind}_alert_pending"
     generation_key = f"{kind}_alert_generation"
     cancel_key = f"{kind}_alert_cancel"
+    reminder_key = f"{kind}_reminder_cancel"
     entry_data[active_key] = notified.get(kind, False)
+    mobile_data = (
+        {"tag": f"{DOMAIN}_{entry.entry_id}_{kind}", "actions": actions} if actions else None
+    )
 
     def _threshold() -> float:
         return parse_percentage(
             entry.options.get(threshold_key, default_threshold), default_threshold
         )
 
+    def _current() -> float | None:
+        state = hass.states.get(entity_id)
+        return parse_reading(state.state) if state is not None else None
+
+    @callback
+    def _cancel_reminder() -> None:
+        cancel = entry_data[reminder_key]
+        if cancel is not None:
+            cancel()
+        entry_data[reminder_key] = None
+
     def _set_active(value: bool) -> None:
         entry_data[active_key] = value
         remember_notified(kind, value)
+        if not value:
+            _cancel_reminder()
+
+    @callback
+    def _schedule_reminder(hours: float) -> None:
+        _cancel_reminder()
+        if build_reminder is None or hours <= 0:
+            return
+        sent_at = entry_data.get(f"{kind}_alert_sent_at") or time.time()
+
+        async def _remind(_now):
+            entry_data[reminder_key] = None
+            value = _current()
+            if (
+                not entry_data[active_key]
+                or not _notifications_enabled(entry)
+                or value is None
+                or value >= _threshold()
+                or (watered_since is not None and watered_since(sent_at))
+            ):
+                return
+            title, message = build_reminder(value)
+            await _send_notifications(hass, entry, title, message, mobile_data)
+            _schedule_reminder(_reminder_hours(entry))
+
+        entry_data[reminder_key] = async_call_later(
+            hass, _delay_outside_quiet_hours(entry, hours * 3600), _remind
+        )
+
+    entry_data[f"{kind}_cancel_reminder"] = _cancel_reminder
+    # "Remind me later" from a notification: one reminder, even without the option.
+    entry_data[f"{kind}_snooze"] = lambda: _schedule_reminder(SNOOZE_HOURS)
 
     @callback
     def _process(current: float, previous: float | None) -> None:
@@ -281,17 +441,20 @@ def _track_alert(
             entry_data[cancel_key] = None
             if not _notifications_enabled(entry) or entry_data[active_key]:
                 return
-            state = hass.states.get(entity_id)
-            value = parse_reading(state.state) if state is not None else None
+            value = _current()
             if value is None or value >= _threshold():
                 return
 
             # Mark the episode before sending to prevent duplicate alerts.
             _set_active(True)
+            entry_data[f"{kind}_alert_sent_at"] = time.time()
             title, message = build_message(value)
-            await _send_notifications(hass, entry, title, message)
+            await _send_notifications(hass, entry, title, message, mobile_data)
+            _schedule_reminder(_reminder_hours(entry))
 
-        entry_data[cancel_key] = async_call_later(hass, delay * 60, _send)
+        entry_data[cancel_key] = async_call_later(
+            hass, _delay_outside_quiet_hours(entry, delay * 60), _send
+        )
 
     @callback
     def _handle_change(event):
@@ -311,8 +474,7 @@ def _track_alert(
 
     # A plant already dry at startup, after a reload (options change) or once
     # notifications are enabled starts an episode without waiting for a change.
-    state = hass.states.get(entity_id)
-    current = parse_reading(state.state) if state is not None else None
+    current = _current()
     if current is not None:
         _process(current, None)
 
@@ -342,6 +504,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     from .images import async_delete_image
 
     await async_delete_image(hass, entry.options.get(CONF_IMAGE_URL))
-    store, store_data = await _async_alert_store(hass)
-    if store_data.pop(entry.entry_id, None) is not None:
-        store.async_delay_save(lambda: store_data, 1)
+    for key in (ALERT_STORE_KEY, WATERING_STORE_KEY):
+        store, store_data = await _async_store(hass, key)
+        if store_data.pop(entry.entry_id, None) is not None:
+            store.async_delay_save(lambda store_data=store_data: store_data, 1)

@@ -38,6 +38,8 @@ Plant Manager est une intégration personnalisée Home Assistant pour gérer des
 - Capteur de statut par plante, utilisable dans vos automatisations.
 - Alertes d'arrosage avec seuil configurable, délai et anti-répétition pendant un épisode de sol sec.
 - Alertes de batterie faible avec seuil configurable et réarmement après récupération.
+- Suivi de l'arrosage : date du dernier arrosage détectée automatiquement et estimation du prochain.
+- Notifications actionnables sur l'application mobile (« C'est arrosé », « Rappeler dans 2 h »), rappels tant que la plante reste sèche et heures calmes.
 - Notifications vers les services `notify.*` et vers les entités de notification.
 - Activation/désactivation des notifications indépendamment pour chaque plante.
 - Carte Lovelace avec tri par nom, humidité ou statut ; filtres par état ; résumé visuel et mode compact.
@@ -91,6 +93,8 @@ Ces valeurs sont des points de départ : chaque sonde mesure différemment, ajus
 - **Délai** : partagé entre les alertes d'arrosage et de batterie, configurable de 0 à 1 440 minutes.
 - **Destinataires** : services `notify.*` (par exemple `notify.mobile_app_telephone`) et/ou entités de notification (envoi via `notify.send_message`). Sans destinataire, aucune alerte n'est envoyée.
 - **Notifications activées** : désactive les alertes de cette plante sans modifier les autres plantes.
+- **Rappel** : renvoie l'alerte d'arrosage toutes les N heures tant que la plante reste sèche et qu'aucun arrosage n'a été détecté (0 = jamais).
+- **Heures calmes** : une notification qui tomberait entre le début et la fin (par exemple 22:00 → 07:00) attend la fin de la plage.
 - Les capteurs de batterie doivent fournir un pourcentage de 0 à 100. Les états non numériques, indisponibles et hors plage sont ignorés.
 
 Les seuils d'humidité sont génériques : adaptez-les aux besoins de chaque plante et aux caractéristiques de son capteur.
@@ -105,6 +109,18 @@ Indiquez l'espèce lors de l'ajout de la plante, ou plus tard dans **Options →
 Les photos (celle de l'espèce ou la vôtre, envoyée depuis **Espèce et photo**) sont copiées dans `config/plant_manager/images/` et servies par l'intégration : les cartes n'ont besoin d'aucun accès à Internet pour les afficher. Une photo que vous envoyez est conservée même si vous changez d'espèce, et la photo d'une plante est supprimée avec la plante.
 
 Les seuils d'OpenPlantbook supposent une sonde de type Mi Flora : selon votre capteur, ajustez-les ensuite dans **Seuils et notifications**.
+
+## Suivi de l'arrosage
+
+Chaque plante dispose de trois entités supplémentaires :
+
+| Entité | Rôle |
+| --- | --- |
+| **Dernier arrosage** (`sensor.<plante>_dernier_arrosage`) | Date du dernier arrosage, détecté quand l'humidité monte d'au moins 15 points par rapport au minimum des 3 dernières heures et que la mesure suivante le confirme (un pic isolé du capteur est ignoré). |
+| **Prochain arrosage** (`sensor.<plante>_prochain_arrosage`) | Estimation de la date à laquelle l'humidité atteindra le seuil d'arrosage, d'après la vitesse de dessèchement mesurée depuis le dernier arrosage. Inconnue tant qu'il n'y a pas au moins 6 h de mesures ou si la plante ne sèche pas. |
+| **Marquer comme arrosée** (`button.<plante>_marquer_comme_arrosee`) | Enregistre un arrosage que la sonde n'a pas vu et arrête les rappels. |
+
+Sur l'application mobile Home Assistant (services `notify.mobile_app_…`), l'alerte d'arrosage propose deux boutons : **C'est arrosé** (même effet que le bouton ci-dessus) et **Rappeler dans 2 h**. Les autres destinataires reçoivent la notification sans boutons.
 
 ## Capteur de statut
 
@@ -130,6 +146,7 @@ Attributs disponibles pour vos automatisations et modèles :
 | `battery_low_threshold`, `battery_reset_threshold` | Seuil d'alerte batterie et seuil de réarmement. |
 | `image_url` | Image configurée pour la plante. |
 | `species`, `species_description` | Espèce choisie et sa description, ou `null`. |
+| `last_watered`, `next_watering` | Dernier arrosage et prochain arrosage estimé (ISO 8601), ou `null`. |
 | `plant_manager` | Toujours `true` ; permet aux cartes de retrouver les plantes. |
 
 Exemple de déclencheur d'automatisation :

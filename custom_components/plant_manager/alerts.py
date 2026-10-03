@@ -102,3 +102,38 @@ def normalize_notify_entities(value) -> list[str]:
         ):
             entities.append(entity_id)
     return entities
+
+
+def parse_time_of_day(value) -> int | None:
+    """Return minutes since midnight for "HH:MM" or "HH:MM:SS", else None."""
+    if not isinstance(value, str):
+        return None
+    parts = value.strip().split(":")
+    if len(parts) not in (2, 3) or not all(part.isdigit() for part in parts):
+        return None
+    hours, minutes = int(parts[0]), int(parts[1])
+    if not (0 <= hours < 24 and 0 <= minutes < 60):
+        return None
+    return hours * 60 + minutes
+
+
+def seconds_until_allowed(now, quiet_start, quiet_end) -> float:
+    """Seconds to wait until the end of the quiet hours, 0 outside of them.
+
+    ``now`` is a local, timezone-aware datetime; the quiet window may cross
+    midnight (22:00 → 07:00).
+    """
+    from datetime import timedelta
+
+    start = parse_time_of_day(quiet_start)
+    end = parse_time_of_day(quiet_end)
+    if start is None or end is None or start == end:
+        return 0.0
+    minutes = now.hour * 60 + now.minute + now.second / 60
+    quiet = start <= minutes < end if start < end else (minutes >= start or minutes < end)
+    if not quiet:
+        return 0.0
+    allowed = now.replace(hour=end // 60, minute=end % 60, second=0, microsecond=0)
+    if allowed <= now:
+        allowed += timedelta(days=1)
+    return (allowed - now).total_seconds()

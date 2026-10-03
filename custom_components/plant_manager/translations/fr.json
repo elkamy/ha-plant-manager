@@ -59,7 +59,7 @@
       },
       "settings": {
         "title": "Réglages de la plante",
-        "description": "Configurez les seuils, l'image et les notifications. Vous pouvez sélectionner plusieurs appareils destinataires. Le seuil d'humidité élevée doit être supérieur au seuil d'arrosage.",
+        "description": "Configurez les seuils, l'image et les notifications. Vous pouvez sélectionner plusieurs appareils destinataires. Le seuil d'humidité élevée doit être supérieur au seuil d'arrosage. Pendant les heures calmes, les notifications attendent la fin de la plage.",
         "data": {
           "notifications_enabled": "Notifications activées",
           "low_threshold": "Seuil d'alerte d'arrosage (%)",
@@ -68,7 +68,10 @@
           "notify_entities": "Entités de notification",
           "delay_minutes": "Délai avant notification (minutes)",
           "image_url": "URL de l'image de la plante (facultatif)",
-          "battery_low_threshold": "Seuil d'alerte de batterie faible (%)"
+          "battery_low_threshold": "Seuil d'alerte de batterie faible (%)",
+          "reminder_hours": "Rappel si toujours sèche après (heures, 0 = jamais)",
+          "quiet_start": "Début des heures calmes (facultatif)",
+          "quiet_end": "Fin des heures calmes (facultatif)"
         }
       },
       "species": {
@@ -113,6 +116,17 @@
           "ok": "OK",
           "too_wet": "Très humide"
         }
+      },
+      "last_watered": {
+        "name": "Dernier arrosage"
+      },
+      "next_watering": {
+        "name": "Prochain arrosage"
+      }
+    },
+    "button": {
+      "watered": {
+        "name": "Marquer comme arrosée"
       }
     }
   },

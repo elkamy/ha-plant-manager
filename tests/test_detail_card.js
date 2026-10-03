@@ -231,3 +231,18 @@ test("displays photos stored by the integration", () => {
   });
   assert.match(html, /src="\/plant_manager\/images\/0123456789abcdef0123456789abcdef\.jpg"/);
 });
+
+test("shows the last and next watering", () => {
+  const html = render({
+    "sensor.monstera_status": plant("ok", {
+      last_watered: new Date(Date.now() - 5 * 3600 * 1000 - 60000).toISOString(),
+      next_watering: new Date(Date.now() - 1000).toISOString(),
+    }),
+  });
+  assert.match(html, /Dernier arrosage<\/span><strong>Il y a 5 h/);
+  assert.match(html, /Prochain arrosage<\/span><strong>Maintenant/);
+});
+
+test("hides the watering section without watering data", () => {
+  assert.doesNotMatch(render({ "sensor.monstera_status": plant() }), /class="watering"/);
+});

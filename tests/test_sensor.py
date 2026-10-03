@@ -28,7 +28,7 @@ class FakeSensorEntity:
 
 
 sensor_api.SensorEntity = FakeSensorEntity
-sensor_api.SensorDeviceClass = types.SimpleNamespace(ENUM="enum")
+sensor_api.SensorDeviceClass = types.SimpleNamespace(ENUM="enum", TIMESTAMP="timestamp")
 sys.modules["homeassistant.components.sensor"] = sensor_api
 
 config_entries = sys.modules.setdefault(
@@ -188,6 +188,67 @@ class PlantStatusSensorTests(unittest.TestCase):
 
     def test_battery_attribute_is_none_without_battery_sensor(self):
         self.assertIsNone(self.make_sensor(50).extra_state_attributes["battery"])
+
+
+class FakeTracker:
+    def __init__(self, last_watered=None, next_watering=None):
+        self.last_watered = last_watered
+        self._next = next_watering
+        self.calls = []
+
+    def next_watering(self, now, current, low):
+        self.calls.append((current, low))
+        return self._next
+
+
+class WateringSensorTests(unittest.TestCase):
+    def setUp(self):
+        self.entry = FakeEntry(55, {"low_threshold": 35})
+
+    def test_last_watered_is_a_utc_timestamp(self):
+        sensor = SENSOR_MODULE.LastWateredSensor(self.entry.hass, self.entry, FakeTracker(1_790_000_000))
+        self.assertEqual(sensor.native_value.isoformat(), "2026-09-21T14:13:20+00:00")
+        self.assertIsNone(
+            SENSOR_MODULE.LastWateredSensor(self.entry.hass, self.entry, FakeTracker()).native_value
+        )
+
+    def test_next_watering_uses_the_current_moisture_and_threshold(self):
+        tracker = FakeTracker(next_watering=1_790_100_000)
+        sensor = SENSOR_MODULE.NextWateringSensor(self.entry.hass, self.entry, tracker)
+        self.assertEqual(sensor.native_value.isoformat(), "2026-09-22T18:00:00+00:00")
+        self.assertEqual(tracker.calls, [(55.0, 35.0)])
+
+    def test_status_attributes_include_the_watering_dates(self):
+        sensor = PlantStatusSensor(
+            self.entry.hass, self.entry, tracker=FakeTracker(1_790_000_000, 1_790_100_000)
+        )
+        attributes = sensor.extra_state_attributes
+        self.assertEqual(attributes["last_watered"], "2026-09-21T14:13:20+00:00")
+        self.assertEqual(attributes["next_watering"], "2026-09-22T18:00:00+00:00")
+
+    def test_entities_share_the_plant_device_with_distinct_ids(self):
+        tracker = FakeTracker()
+        entities = [
+            PlantStatusSensor(self.entry.hass, self.entry, tracker=tracker),
+            SENSOR_MODULE.LastWateredSensor(self.entry.hass, self.entry, tracker),
+            SENSOR_MODULE.NextWateringSensor(self.entry.hass, self.entry, tracker),
+        ]
+        self.assertEqual(len({e._attr_unique_id for e in entities}), 3)
+        self.assertEqual(
+            {frozenset(e._attr_device_info["identifiers"]) for e in entities},
+            {frozenset({("plant_manager", "plant-entry")})},
+        )
+
+    def test_entity_names_are_translated(self):
+        import json
+
+        for language in ("fr", "en"):
+            path = PACKAGE_PATH / "translations" / f"{language}.json"
+            entity = json.loads(path.read_text(encoding="utf-8"))["entity"]
+            with self.subTest(language=language):
+                self.assertIn("name", entity["sensor"]["last_watered"])
+                self.assertIn("name", entity["sensor"]["next_watering"])
+                self.assertIn("name", entity["button"]["watered"])
 
 
 class TranslationTests(unittest.TestCase):

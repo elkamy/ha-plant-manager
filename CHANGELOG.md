@@ -1,5 +1,15 @@
 # Journal des modifications
 
+## [1.3.0] — non publié
+
+### Ajouté
+- Suivi de l'arrosage : entité « Dernier arrosage », détecté automatiquement par une hausse d'humidité confirmée (les pics isolés du capteur sont ignorés), et entité « Prochain arrosage », estimée d'après la vitesse de dessèchement.
+- Bouton « Marquer comme arrosée » pour un arrosage que la sonde n'a pas vu.
+- Notifications actionnables sur l'application mobile : « C'est arrosé » et « Rappeler dans 2 h ».
+- Rappel facultatif tant que la plante reste sèche et qu'aucun arrosage n'a été détecté.
+- Heures calmes : les notifications qui tomberaient dans la plage attendent sa fin.
+- Les cartes affichent le dernier arrosage et le prochain arrosage estimé.
+
 ## [1.2.2] — 2026-10-03
 
 ### Corrigé

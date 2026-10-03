@@ -45,3 +45,18 @@ CONF_APPLY_THRESHOLDS = "apply_thresholds"
 CONF_PHOTO = "photo"
 CONF_PLANTBOOK_CLIENT_ID = "client_id"
 CONF_PLANTBOOK_CLIENT_SECRET = "client_secret"
+
+# Watering follow-up.
+CONF_REMINDER_HOURS = "reminder_hours"
+DEFAULT_REMINDER_HOURS = 0
+CONF_QUIET_START = "quiet_start"
+CONF_QUIET_END = "quiet_end"
+SNOOZE_HOURS = 2
+# Notification actions; the plant's entry ID is appended.
+ACTION_WATERED = "PLANT_MANAGER_WATERED"
+ACTION_SNOOZE = "PLANT_MANAGER_SNOOZE"
+
+
+def signal_updated(entry_id: str) -> str:
+    """Dispatcher signal sent when a plant's watering data changes."""
+    return f"{DOMAIN}_{entry_id}_updated"

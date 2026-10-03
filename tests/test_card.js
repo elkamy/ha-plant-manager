@@ -611,3 +611,18 @@ test("keeps a real watering, which is not a lone glitch", async () => {
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(card.shadowRoot.innerHTML, /Hausse notable détectée : arrosage possible/);
 });
+
+test("shows when the plant was watered and needs water next", () => {
+  const day = 24 * 3600 * 1000;
+  const html = renderCard({
+    "sensor.pachira_status": plant("sensor.pachira_status", "ok", {
+      plant_name: "Pachira",
+      moisture: 55,
+      last_watered: new Date(Date.now() - 3 * day - 60000).toISOString(),
+      next_watering: new Date(Date.now() + 4 * day).toISOString(),
+    }),
+    "sensor.ficus_status": plant("sensor.ficus_status", "ok", { plant_name: "Ficus", moisture: 50 }),
+  });
+  assert.match(html, /Arrosée il y a 3 j · prochain arrosage dans ~4 j/);
+  assert.equal((html.match(/class="watering"/g) || []).length, 1);
+});

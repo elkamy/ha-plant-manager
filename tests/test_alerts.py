@@ -18,6 +18,8 @@ parse_delay_minutes = ALERTS.parse_delay_minutes
 normalize_notify_services = ALERTS.normalize_notify_services
 normalize_notify_entities = ALERTS.normalize_notify_entities
 parse_reading = ALERTS.parse_reading
+parse_time_of_day = ALERTS.parse_time_of_day
+seconds_until_allowed = ALERTS.seconds_until_allowed
 
 
 class ShouldStartAlertTests(unittest.TestCase):
@@ -126,6 +128,36 @@ class ConfigurationHelperTests(unittest.TestCase):
         self.assertEqual(normalize_notify_entities("notify.phone"), ["notify.phone"])
         self.assertEqual(normalize_notify_entities(""), [])
         self.assertEqual(normalize_notify_entities(42), [])
+
+
+
+class QuietHoursTests(unittest.TestCase):
+    def at(self, hour, minute=0):
+        from datetime import datetime, timezone
+
+        return datetime(2026, 10, 3, hour, minute, tzinfo=timezone.utc)
+
+    def test_parses_times_from_the_time_selector(self):
+        self.assertEqual(parse_time_of_day("22:30:00"), 22 * 60 + 30)
+        self.assertEqual(parse_time_of_day("07:00"), 7 * 60)
+        for value in (None, "", "25:00", "7h", "12:60", 1200):
+            with self.subTest(value=value):
+                self.assertIsNone(parse_time_of_day(value))
+
+    def test_window_crossing_midnight(self):
+        self.assertEqual(seconds_until_allowed(self.at(23), "22:00:00", "07:00:00"), 8 * 3600)
+        self.assertEqual(seconds_until_allowed(self.at(3, 30), "22:00:00", "07:00:00"), 3.5 * 3600)
+        self.assertEqual(seconds_until_allowed(self.at(7), "22:00:00", "07:00:00"), 0)
+        self.assertEqual(seconds_until_allowed(self.at(12), "22:00:00", "07:00:00"), 0)
+
+    def test_window_within_the_day(self):
+        self.assertEqual(seconds_until_allowed(self.at(13), "12:00", "14:00"), 3600)
+        self.assertEqual(seconds_until_allowed(self.at(14), "12:00", "14:00"), 0)
+
+    def test_no_window_when_unset_or_empty(self):
+        for start, end in ((None, "07:00"), ("22:00", None), ("08:00", "08:00"), ("bad", "07:00")):
+            with self.subTest(start=start, end=end):
+                self.assertEqual(seconds_until_allowed(self.at(23), start, end), 0)
 
 
 if __name__ == "__main__":
