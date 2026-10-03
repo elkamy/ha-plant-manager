@@ -76,3 +76,25 @@ test("shows a low-battery warning when below the configured threshold", () => {
   assert.match(html, /class="battery-value low"/);
   assert.match(html, /Seuil d'alerte : 25 %/);
 });
+
+test("does not treat an out-of-range battery as a valid percentage", () => {
+  const html = render({ "sensor.monstera_status": plant("OK", { battery: 150 }) });
+  assert.match(html, /Batterie du capteur/);
+  assert.match(html, /Indisponible/);
+  assert.doesNotMatch(html, /class="battery-value low"/);
+});
+
+test("escapes plant names before inserting them into the card", () => {
+  const html = render({ "sensor.monstera_status": plant("OK", { plant_name: "<Monstera>" }) });
+  assert.match(html, /&lt;Monstera&gt;/);
+  assert.doesNotMatch(html, /<h2><Monstera><\/h2>/);
+});
+
+test("allows the history section to be hidden", () => {
+  const html = render(
+    { "sensor.monstera_status": plant() },
+    { entity: "sensor.monstera_status", show_history: false },
+  );
+  assert.match(html, /Historique masqué dans la configuration/);
+  assert.doesNotMatch(html, /Évolution sur 24 h/);
+});
