@@ -1,5 +1,13 @@
 # Journal des modifications
 
+## [1.4.0] — non publié
+
+### Ajouté
+- Option `history_days` (1, 3 ou 7 jours) pour l'historique des deux cartes ; les historiques longs sont moyennés avant d'être tracés.
+- La fiche détaillée trace les seuils d'arrosage et de sol très humide en pointillés sur la courbe.
+- Les cartes et leur éditeur s'affichent en anglais lorsque l'interface de Home Assistant n'est pas en français.
+- Largeur par défaut dans les tableaux de bord en sections : pleine largeur pour la liste, demi-largeur pour la fiche.
+
 ## [1.3.0] — non publié
 
 ### Ajouté

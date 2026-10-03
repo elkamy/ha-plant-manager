@@ -72,7 +72,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     ])
     # Bump the query version when changing card JavaScript to invalidate caches.
     for _filename, url in cards:
-        add_extra_js_url(hass, f"{url}?v=1.3.0")
+        add_extra_js_url(hass, f"{url}?v=1.4.0")
     hass.data.setdefault(DOMAIN, {})
     return True
 

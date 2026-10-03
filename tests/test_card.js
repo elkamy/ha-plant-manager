@@ -626,3 +626,43 @@ test("shows when the plant was watered and needs water next", () => {
   assert.match(html, /Arrosée il y a 3 j · prochain arrosage dans ~4 j/);
   assert.equal((html.match(/class="watering"/g) || []).length, 1);
 });
+
+test("speaks English to an English interface", () => {
+  const html = renderCard({
+    "sensor.dry": plant("sensor.dry", "needs_water", { plant_name: "Pachira", moisture: 20 }),
+  }, {}, { locale: { language: "en-GB" } });
+  assert.match(html, /My indoor garden/);
+  assert.match(html, /1 plant shown/);
+  assert.match(html, /Needs water/);
+  assert.match(html, /Check the soil and water if needed/);
+  assert.doesNotMatch(html, /arroser/);
+});
+
+test("requests the configured history length and averages long histories", async () => {
+  const requests = [];
+  const start = Date.now() / 1000 - 3 * 86400;
+  // A reading every 5 minutes for 3 days: 864 points, averaged before drawing.
+  const samples = Array.from({ length: 864 }, (_, i) => ({ state: String(60 - i / 30), lu: start + i * 300 }));
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true, history_days: 3 });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "ok", {
+        plant_name: "Monstera", moisture: 31, moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
+    callWS: (request) => { requests.push(request); return Promise.resolve(wsHistory(samples)); },
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  const days = (Date.parse(requests[0].end_time) - Date.parse(requests[0].start_time)) / 86400000;
+  assert.equal(Math.round(days), 3);
+  const html = card.shadowRoot.innerHTML;
+  assert.match(html, /Tendance sur 3 j/);
+  const points = html.match(/points="([^"]+)"/)[1].split(" ");
+  assert.ok(points.length <= 120, `${points.length} points drawn`);
+  assert.match(html, /En baisse/);
+});
+
+test("fills a sections dashboard row by default", () => {
+  assert.deepEqual(JSON.parse(JSON.stringify(new PlantManagerCard().getGridOptions())), { columns: 12, min_columns: 6 });
+});

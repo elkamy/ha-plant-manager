@@ -1,22 +1,141 @@
+const PLANT_MANAGER_TEXT = {
+  fr: {
+    status: {
+      needs_water: ["À arroser", "Vérifiez le substrat et arrosez si nécessaire."],
+      too_wet: ["Très humide", "Laissez le substrat sécher avant le prochain arrosage."],
+      ok: ["En bonne santé", "Rien à signaler pour le moment."],
+      unknown: ["Indisponible", "Vérifiez le capteur et sa connexion."],
+    },
+    unavailable: "Indisponible",
+    justNow: "à l’instant",
+    minutesAgo: (n) => `il y a ${n} min`,
+    hoursAgo: (n) => `il y a ${n} h`,
+    daysAgo: (n) => `il y a ${n} j`,
+    now: "maintenant",
+    inHours: (n) => `dans ~${n} h`,
+    inDays: (n) => `dans ~${n} j`,
+    lastReading: (age) => `Dernière mesure ${age}`,
+    watered: (when) => `Arrosée ${when}`,
+    nextWatering: (when) => `prochain arrosage ${when}`,
+    rising: "En hausse",
+    falling: "En baisse",
+    stable: "Stable",
+    trendTitle: (days) => (days > 1 ? `Tendance sur ${days} j` : "Tendance sur 24 h"),
+    historyLabel: (days, trend) => `Historique de l'humidité sur ${days > 1 ? `${days} jours` : "24 heures"} : ${trend.toLocaleLowerCase("fr")}`,
+    wateringHint: "Hausse notable détectée : arrosage possible (estimation).",
+    notEnoughHistory: "Historique insuffisant pour afficher la tendance.",
+    plant: "Plante",
+    showDetails: (name) => `Afficher les détails de ${name}`,
+    soilMoisture: "Humidité du sol",
+    shown: (n) => `${n} plante${n > 1 ? "s" : ""} affichée${n > 1 ? "s" : ""}`,
+    toWater: (n) => `${n} à arroser`,
+    overview: "Résumé des plantes",
+    overviewDry: "À arroser",
+    overviewWet: "Très humides",
+    overviewGood: "En forme",
+    overviewNeutral: "Indisponibles",
+    defaultTitle: "Mon jardin d’intérieur",
+    noMatchTitle: "Aucune plante correspondante",
+    noMatchText: "Modifiez le filtre pour afficher d’autres plantes.",
+    emptyTitle: "Aucune plante pour le moment",
+    emptyText: "Ajoutez une plante dans Plant Manager pour commencer le suivi.",
+    stubTitle: "Mes plantes",
+    editor: {
+      labels: {
+        title: "Titre",
+        sort_by: "Tri",
+        filter_by: "Plantes affichées",
+        tap_action: "Action au toucher",
+        history_days: "Durée de l'historique",
+        show_images: "Afficher les photos",
+        show_battery: "Afficher la batterie",
+        show_history: "Afficher l'historique",
+        compact: "Mode compact",
+      },
+      sort: { name: "Nom", moisture: "Humidité croissante", status: "Statut" },
+      filter: { all: "Toutes", needs_water: "À arroser", attention: "Nécessitant une attention" },
+      tap: { "more-info": "Ouvrir les détails", none: "Aucune" },
+      days: { 1: "24 heures", 3: "3 jours", 7: "7 jours" },
+    },
+    description: "Affiche les plantes avec leur humidité, leur statut et leur batterie.",
+  },
+  en: {
+    status: {
+      needs_water: ["Needs water", "Check the soil and water if needed."],
+      too_wet: ["Too wet", "Let the soil dry before the next watering."],
+      ok: ["Healthy", "Nothing to report for now."],
+      unknown: ["Unavailable", "Check the sensor and its connection."],
+    },
+    unavailable: "Unavailable",
+    justNow: "just now",
+    minutesAgo: (n) => `${n} min ago`,
+    hoursAgo: (n) => `${n} h ago`,
+    daysAgo: (n) => `${n} d ago`,
+    now: "now",
+    inHours: (n) => `in ~${n} h`,
+    inDays: (n) => `in ~${n} d`,
+    lastReading: (age) => `Last reading ${age}`,
+    watered: (when) => `Watered ${when}`,
+    nextWatering: (when) => `next watering ${when}`,
+    rising: "Rising",
+    falling: "Falling",
+    stable: "Stable",
+    trendTitle: (days) => (days > 1 ? `${days}-day trend` : "24-hour trend"),
+    historyLabel: (days, trend) => `Moisture history over ${days > 1 ? `${days} days` : "24 hours"}: ${trend.toLowerCase()}`,
+    wateringHint: "Notable rise detected: possibly watered (estimate).",
+    notEnoughHistory: "Not enough history to show the trend.",
+    plant: "Plant",
+    showDetails: (name) => `Show details of ${name}`,
+    soilMoisture: "Soil moisture",
+    shown: (n) => `${n} plant${n > 1 ? "s" : ""} shown`,
+    toWater: (n) => `${n} to water`,
+    overview: "Plants summary",
+    overviewDry: "To water",
+    overviewWet: "Too wet",
+    overviewGood: "Healthy",
+    overviewNeutral: "Unavailable",
+    defaultTitle: "My indoor garden",
+    noMatchTitle: "No matching plant",
+    noMatchText: "Change the filter to show other plants.",
+    emptyTitle: "No plants yet",
+    emptyText: "Add a plant in Plant Manager to start tracking it.",
+    stubTitle: "My plants",
+    editor: {
+      labels: {
+        title: "Title",
+        sort_by: "Sort by",
+        filter_by: "Plants shown",
+        tap_action: "Tap action",
+        history_days: "History length",
+        show_images: "Show photos",
+        show_battery: "Show battery",
+        show_history: "Show history",
+        compact: "Compact mode",
+      },
+      sort: { name: "Name", moisture: "Moisture (lowest first)", status: "Status" },
+      filter: { all: "All", needs_water: "To water", attention: "Needing attention" },
+      tap: { "more-info": "Open details", none: "None" },
+      days: { 1: "24 hours", 3: "3 days", 7: "7 days" },
+    },
+    description: "Shows your plants with their moisture, status and battery.",
+  },
+};
+// French for a French interface, English otherwise.
+const plantManagerText = (language) =>
+  (String(language || "fr").toLowerCase().startsWith("fr") ? PLANT_MANAGER_TEXT.fr : PLANT_MANAGER_TEXT.en);
+const plantManagerLanguage = (hass) => hass?.locale?.language || hass?.language;
+
 const PLANT_MANAGER_STATUSES = {
-  needs_water: {
-    label: "À arroser", tone: "dry", icon: "mdi:water-alert-outline", order: 0,
-    advice: "Vérifiez le substrat et arrosez si nécessaire.",
-  },
-  too_wet: {
-    label: "Très humide", tone: "wet", icon: "mdi:water", order: 1,
-    advice: "Laissez le substrat sécher avant le prochain arrosage.",
-  },
-  ok: {
-    label: "En bonne santé", tone: "good", icon: "mdi:check-circle-outline", order: 2,
-    advice: "Rien à signaler pour le moment.",
-  },
+  needs_water: { tone: "dry", icon: "mdi:water-alert-outline", order: 0 },
+  too_wet: { tone: "wet", icon: "mdi:water", order: 1 },
+  ok: { tone: "good", icon: "mdi:check-circle-outline", order: 2 },
 };
 // "unknown" (invalid reading) and "unavailable" share the neutral status.
-const PLANT_MANAGER_UNKNOWN_STATUS = {
-  label: "Indisponible", tone: "neutral", icon: "mdi:help-circle-outline", order: 3,
-  advice: "Vérifiez le capteur et sa connexion.",
-};
+const PLANT_MANAGER_UNKNOWN_STATUS = { tone: "neutral", icon: "mdi:help-circle-outline", order: 3 };
+const PLANT_MANAGER_HISTORY_DAYS = [1, 3, 7];
+// Above this, points are averaged per period before being drawn.
+const PLANT_MANAGER_MAX_POINTS = 120;
+
 // history/history_during_period answers {entity_id: [{s, lc, lu}]}: the state
 // is in "s" and the timestamps are in seconds, "lc" being omitted when it
 // equals "lu".
@@ -49,32 +168,61 @@ const plantManagerWithoutSpikes = (samples) => {
 };
 
 // "il y a 3 j" / "dans ~4 j" from the ISO dates published by the status sensor.
-const plantManagerSince = (iso, now = Date.now()) => {
+const plantManagerSince = (iso, T, now = Date.now()) => {
   const time = Date.parse(iso || "");
   if (!Number.isFinite(time)) return null;
   const hours = Math.max(0, (now - time) / 3600000);
-  return hours < 1 ? "à l’instant" : hours < 24 ? `il y a ${Math.floor(hours)} h`
-    : `il y a ${Math.floor(hours / 24)} j`;
+  return hours < 1 ? T.justNow : hours < 24 ? T.hoursAgo(Math.floor(hours))
+    : T.daysAgo(Math.floor(hours / 24));
 };
-const plantManagerUntil = (iso, now = Date.now()) => {
+const plantManagerUntil = (iso, T, now = Date.now()) => {
   const time = Date.parse(iso || "");
   if (!Number.isFinite(time)) return null;
   const hours = (time - now) / 3600000;
-  return hours <= 1 ? "maintenant" : hours < 24 ? `dans ~${Math.round(hours)} h`
-    : `dans ~${Math.round(hours / 24)} j`;
+  return hours <= 1 ? T.now : hours < 24 ? T.inHours(Math.round(hours))
+    : T.inDays(Math.round(hours / 24));
 };
 
-const plantManagerStatus = (plant) =>
-  PLANT_MANAGER_STATUSES[String(plant?.state || "").toLowerCase()]
-  || PLANT_MANAGER_UNKNOWN_STATUS;
+const plantManagerStatus = (plant, T = PLANT_MANAGER_TEXT.fr) => {
+  const key = String(plant?.state || "").toLowerCase();
+  const base = PLANT_MANAGER_STATUSES[key] || PLANT_MANAGER_UNKNOWN_STATUS;
+  const [label, advice] = T.status[PLANT_MANAGER_STATUSES[key] ? key : "unknown"];
+  return { ...base, label, advice };
+};
+
+// Averages the points per period so a week of frequent readings stays light.
+const plantManagerDownsample = (values, timestamps, max = PLANT_MANAGER_MAX_POINTS) => {
+  if (values.length <= max || timestamps.length !== values.length) return { values, timestamps };
+  const first = timestamps[0];
+  const span = timestamps[timestamps.length - 1] - first || 1;
+  const buckets = new Map();
+  values.forEach((value, index) => {
+    const bucket = Math.min(max - 1, Math.floor((timestamps[index] - first) / span * max));
+    const entry = buckets.get(bucket) || { sum: 0, count: 0, time: 0 };
+    entry.sum += value;
+    entry.count += 1;
+    entry.time += timestamps[index];
+    buckets.set(bucket, entry);
+  });
+  const ordered = [...buckets.entries()].sort((a, b) => a[0] - b[0]).map(([, e]) => e);
+  return {
+    values: ordered.map((e) => e.sum / e.count),
+    timestamps: ordered.map((e) => e.time / e.count),
+  };
+};
 
 class PlantManagerCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("plant-manager-card-editor");
   }
 
-  static getStubConfig() {
-    return { title: "Mes plantes", sort_by: "status" };
+  static getStubConfig(hass) {
+    return { title: plantManagerText(plantManagerLanguage(hass)).stubTitle, sort_by: "status" };
+  }
+
+  // Sections dashboards: full width by default, never narrower than half.
+  getGridOptions() {
+    return { columns: 12, min_columns: 6 };
   }
 
   setConfig(config) {
@@ -123,6 +271,7 @@ class PlantManagerCard extends HTMLElement {
 
   render() {
     if (!this._hass) return;
+    const T = plantManagerText(plantManagerLanguage(this._hass));
 
     const allPlants = Object.values(this._hass.states)
       .filter((s) => s.attributes?.plant_manager === true);
@@ -130,7 +279,7 @@ class PlantManagerCard extends HTMLElement {
       ? this.config.filter_by
       : "all";
     const plants = allPlants.filter((plant) => {
-      const { tone } = plantManagerStatus(plant);
+      const { tone } = plantManagerStatus(plant, T);
       if (filterBy === "needs_water") return tone === "dry";
       if (filterBy === "attention") return tone !== "good";
       return true;
@@ -156,8 +305,8 @@ class PlantManagerCard extends HTMLElement {
           return moistureA - moistureB;
         }
       } else if (sortBy === "status") {
-        const orderA = plantManagerStatus(a).order;
-        const orderB = plantManagerStatus(b).order;
+        const orderA = plantManagerStatus(a, T).order;
+        const orderB = plantManagerStatus(b, T).order;
         if (orderA !== orderB) return orderA - orderB;
       }
 
@@ -169,21 +318,25 @@ class PlantManagerCard extends HTMLElement {
     const showImages = this.config.show_images !== false;
     const showBattery = this.config.show_battery !== false;
     const showHistory = this.config.show_history === true;
+    const historyDays = PLANT_MANAGER_HISTORY_DAYS.includes(Number(this.config.history_days))
+      ? Number(this.config.history_days) : 1;
     const compact = this.config.compact === true;
 
     // Cache history per entity so ordinary Home Assistant state updates do not
     // trigger repeated history requests while the card is being rendered.
     if (!this._historyCache) this._historyCache = new Map();
     if (!this._historyPending) this._historyPending = new Set();
+    const historyKey = (entityId) => `${entityId}|${historyDays}`;
     const requestHistory = (entityId) => {
-      const cached = entityId ? this._historyCache.get(entityId) : null;
+      const key = historyKey(entityId);
+      const cached = entityId ? this._historyCache.get(key) : null;
       if (!showHistory || !entityId
         || (cached && Date.now() - cached.fetchedAt < 15 * 60 * 1000)
-        || this._historyPending.has(entityId)
+        || this._historyPending.has(key)
         || typeof this._hass.callWS !== "function") return;
-      this._historyPending.add(entityId);
+      this._historyPending.add(key);
       const end = new Date();
-      const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+      const start = new Date(end.getTime() - historyDays * 24 * 60 * 60 * 1000);
       this._hass.callWS({
         type: "history/history_during_period",
         start_time: start.toISOString(),
@@ -203,21 +356,23 @@ class PlantManagerCard extends HTMLElement {
         if (validSamples.length) {
           validSamples.push({ value: validSamples[validSamples.length - 1].value, timestamp: Date.now() });
         }
-        const points = validSamples.map((sample) => sample.value);
-        const timestamps = validSamples.map((sample) => sample.timestamp);
+        const { values: points, timestamps } = plantManagerDownsample(
+          validSamples.map((sample) => sample.value),
+          validSamples.map((sample) => sample.timestamp),
+        );
         // A sudden increase can indicate watering, but moisture sensors can
         // also jump for other reasons; this is only a hint, never a confirmed event.
         const possibleWatering = sampleValues.some((value, index) =>
           index > 0 && Number.isFinite(value)
           && Number.isFinite(sampleValues[index - 1])
           && value - sampleValues[index - 1] >= 15);
-        this._historyCache.set(entityId, {
+        this._historyCache.set(key, {
           points, timestamps, possibleWatering, fetchedAt: Date.now(),
         });
       }).catch(() => {
-        this._historyCache.set(entityId, { points: [], fetchedAt: Date.now() });
+        this._historyCache.set(key, { points: [], fetchedAt: Date.now() });
       }).finally(() => {
-        this._historyPending.delete(entityId);
+        this._historyPending.delete(key);
         if (this.isConnected !== false) this.render();
       });
     };
@@ -240,10 +395,10 @@ class PlantManagerCard extends HTMLElement {
       const hasMoisture = a.moisture !== null && a.moisture !== undefined && a.moisture !== "";
       const moisture = hasMoisture ? Number(a.moisture) : NaN;
       const valid = Number.isFinite(moisture) && moisture >= 0 && moisture <= 100;
-      const { label, tone, icon, advice } = plantManagerStatus(plant);
+      const { label, tone, icon, advice } = plantManagerStatus(plant, T);
 
       const percentage = valid ? Math.max(0, Math.min(100, moisture)) : 0;
-      const moistureText = valid ? `${Math.round(moisture)} %` : "Indisponible";
+      const moistureText = valid ? `${Math.round(moisture)} %` : T.unavailable;
       const hasBattery = a.battery !== null && a.battery !== undefined && a.battery !== "";
       const batteryValue = hasBattery ? Number(a.battery) : NaN;
       const batteryValid = Number.isFinite(batteryValue) && batteryValue >= 0 && batteryValue <= 100;
@@ -263,22 +418,22 @@ class PlantManagerCard extends HTMLElement {
       const updatedTimestamp = updatedAt ? new Date(updatedAt).getTime() : NaN;
       if (Number.isFinite(updatedTimestamp)) {
         const ageMinutes = Math.max(0, Math.floor((Date.now() - updatedTimestamp) / 60000));
-        const ageLabel = ageMinutes < 1 ? "à l’instant"
-          : ageMinutes < 60 ? `il y a ${ageMinutes} min`
-          : ageMinutes < 1440 ? `il y a ${Math.floor(ageMinutes / 60)} h`
-          : `il y a ${Math.floor(ageMinutes / 1440)} j`;
-        updatedText = `<div class="updated">Dernière mesure ${ageLabel}</div>`;
+        const ageLabel = ageMinutes < 1 ? T.justNow
+          : ageMinutes < 60 ? T.minutesAgo(ageMinutes)
+          : ageMinutes < 1440 ? T.hoursAgo(Math.floor(ageMinutes / 60))
+          : T.daysAgo(Math.floor(ageMinutes / 1440));
+        updatedText = `<div class="updated">${T.lastReading(ageLabel)}</div>`;
       }
-      const watered = plantManagerSince(a.last_watered);
-      const nextWatering = plantManagerUntil(a.next_watering);
+      const watered = plantManagerSince(a.last_watered, T);
+      const nextWatering = plantManagerUntil(a.next_watering, T);
       const wateringMarkup = watered || nextWatering
         ? `<div class="watering"><ha-icon icon="mdi:watering-can-outline"></ha-icon><span>${[
-          watered ? `Arrosée ${watered}` : "",
-          nextWatering ? `prochain arrosage ${nextWatering}` : "",
+          watered ? T.watered(watered) : "",
+          nextWatering ? T.nextWatering(nextWatering) : "",
         ].filter(Boolean).join(" · ")}</span></div>`
         : "";
       requestHistory(historyEntity);
-      const historyEntry = showHistory && historyEntity ? this._historyCache.get(historyEntity) : null;
+      const historyEntry = showHistory && historyEntity ? this._historyCache.get(historyKey(historyEntity)) : null;
       const history = historyEntry ? historyEntry.points : null;
       let historyMarkup = "";
       if (showHistory && Array.isArray(history) && history.length >= 2) {
@@ -302,26 +457,26 @@ class PlantManagerCard extends HTMLElement {
           return `${x.toFixed(1)},${y.toFixed(1)}`;
         }).join(" ");
         const trend = history[history.length - 1] - history[0];
-        const trendText = trend > 2 ? "En hausse" : trend < -2 ? "En baisse" : "Stable";
+        const trendText = trend > 2 ? T.rising : trend < -2 ? T.falling : T.stable;
         const wateringHint = historyEntry.possibleWatering
-          ? '<div class="watering-hint"><ha-icon icon="mdi:water-plus-outline"></ha-icon> Hausse notable détectée : arrosage possible (estimation).</div>'
+          ? `<div class="watering-hint"><ha-icon icon="mdi:water-plus-outline"></ha-icon> ${T.wateringHint}</div>`
           : "";
         historyMarkup = `<div class="history">
-          <div class="history-heading"><span>Tendance sur 24 h</span><span>${trendText}</span></div>
-          <svg viewBox="0 0 100 32" preserveAspectRatio="none" role="img" aria-label="Historique de l'humidité sur 24 heures : ${trendText.toLocaleLowerCase("fr")}">
+          <div class="history-heading"><span>${T.trendTitle(historyDays)}</span><span>${trendText}</span></div>
+          <svg viewBox="0 0 100 32" preserveAspectRatio="none" role="img" aria-label="${esc(T.historyLabel(historyDays, trendText))}">
             <polyline points="${points}" fill="none" stroke="var(--info-color, var(--primary-color))" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
           </svg>
           ${wateringHint}
         </div>`;
       } else if (showHistory && Array.isArray(history)) {
-        historyMarkup = '<div class="history history-empty">Historique insuffisant pour afficher la tendance.</div>';
+        historyMarkup = `<div class="history history-empty">${T.notEnoughHistory}</div>`;
       }
       const imageUrl = showImages ? safeImageUrl(a.image_url) : "";
       const image = imageUrl
-        ? `<img class="plant-image" src="${esc(imageUrl)}" alt="${esc(a.plant_name || "Plante")}" loading="lazy">`
+        ? `<img class="plant-image" src="${esc(imageUrl)}" alt="${esc(a.plant_name || T.plant)}" loading="lazy">`
         : '<div class="plant-icon"><ha-icon icon="mdi:flower"></ha-icon></div>';
 
-      return `<article class="plant" data-entity-id="${esc(plant.entity_id)}" tabindex="${tapAction === "none" ? "-1" : "0"}" ${tapAction === "none" ? "" : `role="button" aria-label="Afficher les détails de ${esc(a.plant_name || plant.entity_id)}"`}>
+      return `<article class="plant" data-entity-id="${esc(plant.entity_id)}" tabindex="${tapAction === "none" ? "-1" : "0"}" ${tapAction === "none" ? "" : `role="button" aria-label="${esc(T.showDetails(a.plant_name || plant.entity_id))}"`}>
         <div class="photo">${image}</div>
         <div class="details">
           <div class="plant-heading">
@@ -329,10 +484,10 @@ class PlantManagerCard extends HTMLElement {
             <span class="status ${tone}"><ha-icon icon="${icon}"></ha-icon>${label}</span>
           </div>
           <div class="moisture-line">
-            <span class="moisture-label"><ha-icon icon="mdi:water-percent"></ha-icon> Humidité du sol</span>
+            <span class="moisture-label"><ha-icon icon="mdi:water-percent"></ha-icon> ${T.soilMoisture}</span>
             <strong class="moisture-value">${moistureText}</strong>
           </div>
-          <div class="progress-track" role="progressbar" aria-label="Humidité du sol" aria-valuemin="0" aria-valuemax="100" ${valid ? `aria-valuenow="${Math.round(percentage)}"` : 'aria-valuetext="Indisponible"'}>
+          <div class="progress-track" role="progressbar" aria-label="${T.soilMoisture}" aria-valuemin="0" aria-valuemax="100" ${valid ? `aria-valuenow="${Math.round(percentage)}"` : `aria-valuetext="${T.unavailable}"`}>
             <div class="progress-fill ${tone}" style="width:${percentage}%"></div>
           </div>
           ${showBattery && battery ? `<div class="extras">${battery}</div>` : ""}
@@ -345,21 +500,21 @@ class PlantManagerCard extends HTMLElement {
     }).join("");
 
     const countTone = (tone) => plants.filter(
-      (plant) => plantManagerStatus(plant).tone === tone,
+      (plant) => plantManagerStatus(plant, T).tone === tone,
     ).length;
     const needsWater = countTone("dry");
     const veryWet = countTone("wet");
     const healthy = countTone("good");
     const unavailable = countTone("neutral");
     const summary = plants.length
-      ? `<div class="summary"><span class="summary-dot"></span>${plants.length} plante${plants.length > 1 ? "s" : ""} affichée${plants.length > 1 ? "s" : ""}${needsWater ? ` <span class="summary-alert">· ${needsWater} à arroser</span>` : ""}</div>`
+      ? `<div class="summary"><span class="summary-dot"></span>${T.shown(plants.length)}${needsWater ? ` <span class="summary-alert">· ${T.toWater(needsWater)}</span>` : ""}</div>`
       : "";
     const overview = plants.length
-      ? `<div class="overview" aria-label="Résumé des plantes">
-          <div class="overview-item dry"><span class="overview-count">${needsWater}</span><span>À arroser</span></div>
-          <div class="overview-item wet"><span class="overview-count">${veryWet}</span><span>Très humides</span></div>
-          <div class="overview-item good"><span class="overview-count">${healthy}</span><span>En forme</span></div>
-          <div class="overview-item neutral"><span class="overview-count">${unavailable}</span><span>Indisponibles</span></div>
+      ? `<div class="overview" aria-label="${T.overview}">
+          <div class="overview-item dry"><span class="overview-count">${needsWater}</span><span>${T.overviewDry}</span></div>
+          <div class="overview-item wet"><span class="overview-count">${veryWet}</span><span>${T.overviewWet}</span></div>
+          <div class="overview-item good"><span class="overview-count">${healthy}</span><span>${T.overviewGood}</span></div>
+          <div class="overview-item neutral"><span class="overview-count">${unavailable}</span><span>${T.overviewNeutral}</span></div>
         </div>`
       : "";
 
@@ -368,13 +523,13 @@ class PlantManagerCard extends HTMLElement {
         <div class="card-header">
           <div class="header-icon"><ha-icon icon="mdi:leaf"></ha-icon></div>
           <div class="header-text">
-            <div class="title">${esc(this.config.title || "Mon jardin d’intérieur")}</div>
+            <div class="title">${esc(this.config.title || T.defaultTitle)}</div>
             ${summary}
           </div>
         </div>
         ${overview}
         <div class="content">
-          ${plants.length ? rows : allPlants.length ? '<div class="empty"><div class="empty-icon"><ha-icon icon="mdi:filter-off-outline"></ha-icon></div><strong>Aucune plante correspondante</strong><span>Modifiez le filtre pour afficher d’autres plantes.</span></div>' : '<div class="empty"><div class="empty-icon"><ha-icon icon="mdi:sprout-outline"></ha-icon></div><strong>Aucune plante pour le moment</strong><span>Ajoutez une plante dans Plant Manager pour commencer le suivi.</span></div>'}
+          ${plants.length ? rows : allPlants.length ? `<div class="empty"><div class="empty-icon"><ha-icon icon="mdi:filter-off-outline"></ha-icon></div><strong>${T.noMatchTitle}</strong><span>${T.noMatchText}</span></div>` : `<div class="empty"><div class="empty-icon"><ha-icon icon="mdi:sprout-outline"></ha-icon></div><strong>${T.emptyTitle}</strong><span>${T.emptyText}</span></div>`}
         </div>
       </ha-card>
       <style>
@@ -590,48 +745,22 @@ if (!customElements.get("plant-manager-card")) {
   customElements.define("plant-manager-card", PlantManagerCard);
 }
 
-const PLANT_MANAGER_CARD_LABELS = {
-  title: "Titre",
-  sort_by: "Tri",
-  filter_by: "Plantes affichées",
-  tap_action: "Action au toucher",
-  show_images: "Afficher les photos",
-  show_battery: "Afficher la batterie",
-  show_history: "Afficher l'historique sur 24 h",
-  compact: "Mode compact",
+const plantManagerCardSchema = (T) => {
+  const options = (values) => Object.entries(values).map(([value, label]) => ({ value, label }));
+  return [
+    { name: "title", selector: { text: {} } },
+    { name: "sort_by", selector: { select: { mode: "dropdown", options: options(T.editor.sort) } } },
+    { name: "filter_by", selector: { select: { mode: "dropdown", options: options(T.editor.filter) } } },
+    { name: "tap_action", selector: { select: { mode: "dropdown", options: options(T.editor.tap) } } },
+    {
+      type: "grid",
+      name: "",
+      schema: ["show_images", "show_battery", "show_history", "compact"]
+        .map((name) => ({ name, selector: { boolean: {} } })),
+    },
+    { name: "history_days", selector: { select: { mode: "dropdown", options: options(T.editor.days) } } },
+  ];
 };
-const PLANT_MANAGER_CARD_SCHEMA = [
-  { name: "title", selector: { text: {} } },
-  {
-    name: "sort_by",
-    selector: { select: { mode: "dropdown", options: [
-      { value: "name", label: "Nom" },
-      { value: "moisture", label: "Humidité croissante" },
-      { value: "status", label: "Statut" },
-    ] } },
-  },
-  {
-    name: "filter_by",
-    selector: { select: { mode: "dropdown", options: [
-      { value: "all", label: "Toutes" },
-      { value: "needs_water", label: "À arroser" },
-      { value: "attention", label: "Nécessitant une attention" },
-    ] } },
-  },
-  {
-    name: "tap_action",
-    selector: { select: { mode: "dropdown", options: [
-      { value: "more-info", label: "Ouvrir les détails" },
-      { value: "none", label: "Aucune" },
-    ] } },
-  },
-  {
-    type: "grid",
-    name: "",
-    schema: ["show_images", "show_battery", "show_history", "compact"]
-      .map((name) => ({ name, selector: { boolean: {} } })),
-  },
-];
 const PLANT_MANAGER_CARD_DEFAULTS = {
   sort_by: "name",
   filter_by: "all",
@@ -640,6 +769,7 @@ const PLANT_MANAGER_CARD_DEFAULTS = {
   show_battery: true,
   show_history: false,
   compact: false,
+  history_days: "1",
 };
 
 class PlantManagerCardEditor extends HTMLElement {
@@ -657,7 +787,8 @@ class PlantManagerCardEditor extends HTMLElement {
     if (!this._config) return;
     if (!this._form) {
       this._form = document.createElement("ha-form");
-      this._form.computeLabel = (schema) => PLANT_MANAGER_CARD_LABELS[schema.name] || schema.name;
+      this._form.computeLabel = (schema) =>
+        plantManagerText(plantManagerLanguage(this._hass)).editor.labels[schema.name] || schema.name;
       this._form.addEventListener("value-changed", (event) => {
         this._config = event.detail.value;
         this.dispatchEvent(new CustomEvent("config-changed", {
@@ -669,8 +800,10 @@ class PlantManagerCardEditor extends HTMLElement {
       this.appendChild(this._form);
     }
     this._form.hass = this._hass;
-    this._form.schema = PLANT_MANAGER_CARD_SCHEMA;
-    this._form.data = { ...PLANT_MANAGER_CARD_DEFAULTS, ...this._config };
+    this._form.schema = plantManagerCardSchema(plantManagerText(plantManagerLanguage(this._hass)));
+    // The select works with strings; the card accepts the number too.
+    const data = { ...PLANT_MANAGER_CARD_DEFAULTS, ...this._config };
+    this._form.data = { ...data, history_days: String(data.history_days) };
   }
 }
 
@@ -683,7 +816,10 @@ if (!window.customCards.some((card) => card.type === "plant-manager-card")) {
   window.customCards.push({
     type: "plant-manager-card",
     name: "Plant Manager",
-    description: "Affiche les plantes avec leur humidité, leur statut et leur batterie.",
+    // The card picker is shown in the interface language, set on <html lang>.
+    description: plantManagerText(
+      typeof document !== "undefined" ? document.documentElement?.lang : undefined,
+    ).description,
     preview: true,
   });
 }

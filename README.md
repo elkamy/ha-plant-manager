@@ -162,7 +162,7 @@ trigger:
 
 L'intégration enregistre automatiquement le JavaScript des cartes au démarrage. Après une mise à jour, redémarrez Home Assistant puis forcez le rechargement du tableau de bord (**Ctrl+Maj+R** dans le navigateur ; dans l'application mobile, **Paramètres de l'application → Débogage → Réinitialiser le cache du frontend**) : sans cela, le navigateur peut continuer à utiliser les anciennes cartes. Une ancienne ressource manuelle `/local/plant-manager-card.js` peut être supprimée si elle est encore configurée.
 
-Les deux cartes apparaissent dans le sélecteur de cartes (**Ajouter une carte → Plant Manager**) et se configurent avec l'éditeur visuel ou en YAML.
+Les deux cartes apparaissent dans le sélecteur de cartes (**Ajouter une carte → Plant Manager**) et se configurent avec l'éditeur visuel ou en YAML. Elles s'affichent en français ou en anglais selon la langue de votre profil Home Assistant. Dans un tableau de bord en sections, la liste occupe toute la largeur et la fiche détaillée la moitié par défaut.
 
 ### Liste des plantes
 
@@ -183,7 +183,8 @@ show_battery: true
 | `filter_by` | `all`, `needs_water`, `attention` | `all` | Affiche toutes les plantes, celles à arroser ou celles qui nécessitent une attention. |
 | `show_images` | `true`, `false` | `true` | Affiche ou masque les photos personnalisées. |
 | `show_battery` | `true`, `false` | `true` | Affiche ou masque les indicateurs de batterie. |
-| `show_history` | `true`, `false` | `false` | Affiche la courbe et la tendance d'humidité sur 24 h. |
+| `show_history` | `true`, `false` | `false` | Affiche la courbe et la tendance d'humidité. |
+| `history_days` | `1`, `3`, `7` | `1` | Durée de l'historique affiché, en jours. |
 | `compact` | `true`, `false` | `false` | Réduit les marges et l'espacement vertical. |
 | `tap_action` | `more-info`, `none` | `more-info` | Ouvre « Plus d'informations » au toucher, ou ne fait rien. La syntaxe `tap_action: { action: none }` est aussi acceptée. |
 
@@ -216,7 +217,8 @@ show_history: true
 | --- | --- | --- | --- |
 | `entity` | entité de statut | obligatoire | Capteur de statut de la plante à afficher. |
 | `title` | texte | nom de la plante | Titre affiché sur la fiche. |
-| `show_history` | `true`, `false` | `true` | Affiche ou masque l'historique sur 24 h. |
+| `show_history` | `true`, `false` | `true` | Affiche ou masque l'historique, avec les seuils d'arrosage et de sol très humide en pointillés. |
+| `history_days` | `1`, `3`, `7` | `1` | Durée de l'historique affiché, en jours. |
 
 ### Images
 

@@ -1,12 +1,114 @@
+const PLANT_MANAGER_DETAIL_TEXT = {
+  fr: {
+    status: {
+      needs_water: ["À arroser", "Vérifiez le substrat et arrosez si nécessaire."],
+      too_wet: ["Très humide", "Laissez le substrat sécher avant le prochain arrosage."],
+      ok: ["En bonne santé", "Rien à signaler pour le moment."],
+      unknown: ["Indisponible", "Vérifiez le capteur et sa connexion."],
+    },
+    missingEntity: "Veuillez définir l'entité de statut Plant Manager dans « entity ».",
+    notFound: (entity) => `Entité Plant Manager introuvable : ${entity}`,
+    unavailable: "Indisponible",
+    unknownDate: "Date inconnue",
+    justNow: "à l’instant",
+    minutesAgo: (n) => `il y a ${n} min`,
+    hoursAgo: (n) => `il y a ${n} h`,
+    daysAgo: (n) => `il y a ${n} j`,
+    now: "maintenant",
+    inHours: (n) => `dans ~${n} h`,
+    inDays: (n) => `dans ~${n} j`,
+    rising: "En hausse",
+    falling: "En baisse",
+    stable: "Stable",
+    trendTitle: (days) => (days > 1 ? `Évolution sur ${days} j` : "Évolution sur 24 h"),
+    trendLabel: (trend) => `Évolution de l'humidité : ${trend.toLocaleLowerCase("fr")}`,
+    min: (value) => `${value} % min.`,
+    max: (value) => `${value} % max.`,
+    noHistory: "Historique indisponible ou insuffisant.",
+    historyHidden: "Historique masqué dans la configuration.",
+    soilMoisture: "Humidité du sol",
+    lowThreshold: (value) => `Seuil bas : ${value}`,
+    highThreshold: (value) => `Seuil haut : ${value}`,
+    lastReading: (age) => `Dernière mesure : ${age}`,
+    lastWatered: "Dernier arrosage",
+    nextWatering: "Prochain arrosage",
+    battery: "Batterie du capteur",
+    batteryThreshold: (value) => `Seuil d'alerte : ${value}`,
+    editor: {
+      entity: "Plante",
+      title: "Titre (facultatif)",
+      show_history: "Afficher l'historique",
+      history_days: "Durée de l'historique",
+      days: { 1: "24 heures", 3: "3 jours", 7: "7 jours" },
+    },
+    name: "Plant Manager — Fiche plante",
+    description: "Affiche les détails, seuils, batterie et l'historique d'une plante.",
+  },
+  en: {
+    status: {
+      needs_water: ["Needs water", "Check the soil and water if needed."],
+      too_wet: ["Too wet", "Let the soil dry before the next watering."],
+      ok: ["Healthy", "Nothing to report for now."],
+      unknown: ["Unavailable", "Check the sensor and its connection."],
+    },
+    missingEntity: "Please set the Plant Manager status entity in \"entity\".",
+    notFound: (entity) => `Plant Manager entity not found: ${entity}`,
+    unavailable: "Unavailable",
+    unknownDate: "Unknown date",
+    justNow: "just now",
+    minutesAgo: (n) => `${n} min ago`,
+    hoursAgo: (n) => `${n} h ago`,
+    daysAgo: (n) => `${n} d ago`,
+    now: "now",
+    inHours: (n) => `in ~${n} h`,
+    inDays: (n) => `in ~${n} d`,
+    rising: "Rising",
+    falling: "Falling",
+    stable: "Stable",
+    trendTitle: (days) => (days > 1 ? `${days}-day trend` : "24-hour trend"),
+    trendLabel: (trend) => `Moisture trend: ${trend.toLowerCase()}`,
+    min: (value) => `${value}% min`,
+    max: (value) => `${value}% max`,
+    noHistory: "History unavailable or insufficient.",
+    historyHidden: "History hidden in the card settings.",
+    soilMoisture: "Soil moisture",
+    lowThreshold: (value) => `Low threshold: ${value}`,
+    highThreshold: (value) => `High threshold: ${value}`,
+    lastReading: (age) => `Last reading: ${age}`,
+    lastWatered: "Last watered",
+    nextWatering: "Next watering",
+    battery: "Sensor battery",
+    batteryThreshold: (value) => `Alert threshold: ${value}`,
+    editor: {
+      entity: "Plant",
+      title: "Title (optional)",
+      show_history: "Show history",
+      history_days: "History length",
+      days: { 1: "24 hours", 3: "3 days", 7: "7 days" },
+    },
+    name: "Plant Manager — Plant details",
+    description: "Shows a plant's details, thresholds, battery and history.",
+  },
+};
+// French for a French interface, English otherwise.
+const plantManagerDetailText = (language) => (
+  String(language || "fr").toLowerCase().startsWith("fr")
+    ? PLANT_MANAGER_DETAIL_TEXT.fr : PLANT_MANAGER_DETAIL_TEXT.en
+);
+const plantManagerDetailLanguage = (hass) => hass?.locale?.language || hass?.language;
+const plantManagerDetailPageLanguage = () => (
+  typeof document !== "undefined" ? document.documentElement?.lang : undefined
+);
+const plantManagerDetailCapitalize = (text) => text.replace(/^./, (c) => c.toUpperCase());
+
 const PLANT_MANAGER_DETAIL_STATUSES = {
-  needs_water: ["À arroser", "dry", "mdi:water-alert-outline", "Vérifiez le substrat et arrosez si nécessaire."],
-  too_wet: ["Très humide", "wet", "mdi:water", "Laissez le substrat sécher avant le prochain arrosage."],
-  ok: ["En bonne santé", "good", "mdi:check-circle-outline", "Rien à signaler pour le moment."],
+  needs_water: ["dry", "mdi:water-alert-outline"],
+  too_wet: ["wet", "mdi:water"],
+  ok: ["good", "mdi:check-circle-outline"],
 };
 // "unknown" (invalid reading) and "unavailable" share the neutral status.
-const PLANT_MANAGER_DETAIL_UNKNOWN = [
-  "Indisponible", "neutral", "mdi:help-circle-outline", "Vérifiez le capteur et sa connexion.",
-];
+const PLANT_MANAGER_DETAIL_UNKNOWN = ["neutral", "mdi:help-circle-outline"];
+const PLANT_MANAGER_DETAIL_HISTORY_DAYS = [1, 3, 7];
 
 // history/history_during_period answers {entity_id: [{s, lc, lu}]}: the state
 // is in "s" and the timestamps are in seconds, "lc" being omitted when it
@@ -40,19 +142,19 @@ const plantManagerDetailWithoutSpikes = (samples) => {
 };
 
 // "il y a 3 j" / "dans ~4 j" from the ISO dates published by the status sensor.
-const plantManagerDetailSince = (iso, now = Date.now()) => {
+const plantManagerDetailSince = (iso, T, now = Date.now()) => {
   const time = Date.parse(iso || "");
   if (!Number.isFinite(time)) return null;
   const hours = Math.max(0, (now - time) / 3600000);
-  return hours < 1 ? "à l’instant" : hours < 24 ? `il y a ${Math.floor(hours)} h`
-    : `il y a ${Math.floor(hours / 24)} j`;
+  return hours < 1 ? T.justNow : hours < 24 ? T.hoursAgo(Math.floor(hours))
+    : T.daysAgo(Math.floor(hours / 24));
 };
-const plantManagerDetailUntil = (iso, now = Date.now()) => {
+const plantManagerDetailUntil = (iso, T, now = Date.now()) => {
   const time = Date.parse(iso || "");
   if (!Number.isFinite(time)) return null;
   const hours = (time - now) / 3600000;
-  return hours <= 1 ? "maintenant" : hours < 24 ? `dans ~${Math.round(hours)} h`
-    : `dans ~${Math.round(hours / 24)} j`;
+  return hours <= 1 ? T.now : hours < 24 ? T.inHours(Math.round(hours))
+    : T.inDays(Math.round(hours / 24));
 };
 
 class PlantManagerDetailCard extends HTMLElement {
@@ -66,9 +168,14 @@ class PlantManagerDetailCard extends HTMLElement {
     return { entity: plant ? plant.entity_id : "", show_history: true };
   }
 
+  // Sections dashboards: half width by default.
+  getGridOptions() {
+    return { columns: 6, min_columns: 4 };
+  }
+
   setConfig(config) {
     if (!config?.entity || typeof config.entity !== "string") {
-      throw new Error("Veuillez définir l'entité de statut Plant Manager dans « entity ».");
+      throw new Error(plantManagerDetailText(plantManagerDetailPageLanguage()).missingEntity);
     }
     this.config = config;
     this.render();
@@ -106,12 +213,13 @@ class PlantManagerDetailCard extends HTMLElement {
 
   render() {
     if (!this._hass || !this.config) return;
+    const T = plantManagerDetailText(plantManagerDetailLanguage(this._hass));
     const plant = this._hass.states[this.config.entity];
     const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     }[c]));
     if (!plant || plant.attributes?.plant_manager !== true) {
-      this._root.innerHTML = `<ha-card><div class="empty">Entité Plant Manager introuvable : ${esc(this.config.entity)}</div></ha-card>`;
+      this._root.innerHTML = `<ha-card><div class="empty">${esc(T.notFound(this.config.entity))}</div></ha-card>`;
       return;
     }
 
@@ -126,17 +234,17 @@ class PlantManagerDetailCard extends HTMLElement {
     const low = Number(a.low_threshold);
     const high = Number(a.high_threshold);
     const batteryThreshold = Number(a.battery_low_threshold);
-    const [statusLabel, tone, statusIcon, advice] = PLANT_MANAGER_DETAIL_STATUSES[
-      String(plant.state || "").toLowerCase()
-    ] || PLANT_MANAGER_DETAIL_UNKNOWN;
+    const statusKey = String(plant.state || "").toLowerCase();
+    const [tone, statusIcon] = PLANT_MANAGER_DETAIL_STATUSES[statusKey] || PLANT_MANAGER_DETAIL_UNKNOWN;
+    const [statusLabel, advice] = T.status[PLANT_MANAGER_DETAIL_STATUSES[statusKey] ? statusKey : "unknown"];
     // The species name is shown only when it adds something to the plant's name.
     const species = String(a.species || "").trim();
     const speciesDescription = String(a.species_description || "").trim();
     const speciesLine = species && species.toLowerCase() !== String(this.config.title || name).toLowerCase()
       ? `<div class="species"><em>${esc(species)}</em>${speciesDescription ? ` · ${esc(speciesDescription)}` : ""}</div>`
       : "";
-    const watered = plantManagerDetailSince(a.last_watered);
-    const nextWatering = plantManagerDetailUntil(a.next_watering);
+    const watered = plantManagerDetailSince(a.last_watered, T);
+    const nextWatering = plantManagerDetailUntil(a.next_watering, T);
     const imageUrl = String(a.image_url || "").trim();
     const safeImage = /^https?:\/\//i.test(imageUrl) || /^\/(local|api|media|plant_manager\/images)\//.test(imageUrl)
       ? imageUrl : "";
@@ -145,21 +253,25 @@ class PlantManagerDetailCard extends HTMLElement {
     const timestamp = Date.parse(moistureSource?.last_updated || moistureSource?.last_changed || "");
     const ageMinutes = Number.isFinite(timestamp)
       ? Math.max(0, Math.floor((Date.now() - timestamp) / 60000)) : null;
-    const ageLabel = ageMinutes === null ? "Date inconnue"
-      : ageMinutes < 1 ? "À l’instant"
-      : ageMinutes < 60 ? `Il y a ${ageMinutes} min`
-      : ageMinutes < 1440 ? `Il y a ${Math.floor(ageMinutes / 60)} h`
-      : `Il y a ${Math.floor(ageMinutes / 1440)} j`;
+    const ageLabel = ageMinutes === null ? T.unknownDate : plantManagerDetailCapitalize(
+      ageMinutes < 1 ? T.justNow
+        : ageMinutes < 60 ? T.minutesAgo(ageMinutes)
+        : ageMinutes < 1440 ? T.hoursAgo(Math.floor(ageMinutes / 60))
+        : T.daysAgo(Math.floor(ageMinutes / 1440)),
+    );
 
-    if (!this._historyCache) this._historyCache = { entity: null, fetchedAt: 0, points: [], timestamps: [] };
+    if (!this._historyCache) this._historyCache = { key: null, fetchedAt: 0, points: [], timestamps: [] };
     const showHistory = this.config.show_history !== false;
+    const historyDays = PLANT_MANAGER_DETAIL_HISTORY_DAYS.includes(Number(this.config.history_days))
+      ? Number(this.config.history_days) : 1;
+    const historyKey = `${moistureEntity}|${historyDays}`;
     if (showHistory && moistureEntity && typeof this._hass.callWS === "function"
-      && (this._historyCache.entity !== moistureEntity
+      && (this._historyCache.key !== historyKey
         || Date.now() - this._historyCache.fetchedAt > 15 * 60 * 1000)
       && !this._historyPending) {
       this._historyPending = true;
       const end = new Date();
-      const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+      const start = new Date(end.getTime() - historyDays * 24 * 60 * 60 * 1000);
       this._hass.callWS({
         type: "history/history_during_period",
         start_time: start.toISOString(),
@@ -176,26 +288,33 @@ class PlantManagerDetailCard extends HTMLElement {
           valid.push({ value: valid[valid.length - 1].value, timestamp: Date.now() });
         }
         this._historyCache = {
-          entity: moistureEntity,
+          key: historyKey,
           fetchedAt: Date.now(),
           points: valid.map((sample) => sample.value),
           timestamps: valid.map((sample) => sample.timestamp),
         };
       }).catch(() => {
-        this._historyCache = { entity: moistureEntity, fetchedAt: Date.now(), points: [], timestamps: [] };
+        this._historyCache = { key: historyKey, fetchedAt: Date.now(), points: [], timestamps: [] };
       }).finally(() => {
         this._historyPending = false;
         if (this.isConnected !== false) this.render();
       });
     }
 
-    const history = this._historyCache.entity === moistureEntity ? this._historyCache.points : [];
-    let chart = '<div class="history-empty">Historique indisponible ou insuffisant.</div>';
+    const history = this._historyCache.key === historyKey ? this._historyCache.points : [];
+    let chart = `<div class="history-empty">${T.noHistory}</div>`;
     if (showHistory && history.length >= 2) {
       const min = Math.min(...history);
       const max = Math.max(...history);
-      const range = Math.max(max - min, 1);
-      const flat = max === min;
+      // The scale includes the thresholds, drawn as dashed lines, so the
+      // curve shows how close the plant is to needing water or being too wet.
+      const lowShown = Number.isFinite(low) && low >= 0 && low <= 100;
+      const highShown = Number.isFinite(high) && high >= 0 && high <= 100;
+      const bottom = Math.min(min, lowShown ? low : min);
+      const top = Math.max(max, highShown ? high : max);
+      const range = Math.max(top - bottom, 1);
+      const flat = top === bottom;
+      const yOf = (value) => (flat ? 17 : 28 - ((value - bottom) / range) * 22);
       const times = this._historyCache.timestamps || [];
       const timed = times.length === history.length && times.every(Number.isFinite)
         && Math.max(...times) > Math.min(...times);
@@ -203,22 +322,24 @@ class PlantManagerDetailCard extends HTMLElement {
       const span = timed ? Math.max(...times) - first : 0;
       const points = history.map((value, index) => {
         const x = timed ? (times[index] - first) * 100 / span : index * 100 / (history.length - 1);
-        const y = flat ? 17 : 28 - ((value - min) / range) * 22;
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
+        return `${x.toFixed(1)},${yOf(value).toFixed(1)}`;
       }).join(" ");
       const delta = history[history.length - 1] - history[0];
-      const trend = delta > 2 ? "En hausse" : delta < -2 ? "En baisse" : "Stable";
-      chart = `<div class="history-heading"><span>Évolution sur 24 h</span><strong>${trend}</strong></div>
-        <svg viewBox="0 0 100 32" preserveAspectRatio="none" role="img" aria-label="Évolution de l'humidité : ${trend.toLocaleLowerCase("fr")}">
+      const trend = delta > 2 ? T.rising : delta < -2 ? T.falling : T.stable;
+      const thresholdLine = (value, kind) => `<line class="threshold ${kind}" x1="0" x2="100" y1="${yOf(value).toFixed(1)}" y2="${yOf(value).toFixed(1)}" vector-effect="non-scaling-stroke"></line>`;
+      chart = `<div class="history-heading"><span>${T.trendTitle(historyDays)}</span><strong>${trend}</strong></div>
+        <svg viewBox="0 0 100 32" preserveAspectRatio="none" role="img" aria-label="${esc(T.trendLabel(trend))}">
+          ${lowShown && !flat ? thresholdLine(low, "low") : ""}
+          ${highShown && !flat ? thresholdLine(high, "high") : ""}
           <polyline points="${points}" fill="none" stroke="var(--info-color, var(--primary-color))" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
         </svg>
-        <div class="history-range"><span>${Math.round(min)} % min.</span><span>${Math.round(max)} % max.</span></div>`;
+        <div class="history-range"><span>${T.min(Math.round(min))}</span><span>${T.max(Math.round(max))}</span></div>`;
     } else if (!showHistory) {
-      chart = '<div class="history-empty">Historique masqué dans la configuration.</div>';
+      chart = `<div class="history-empty">${T.historyHidden}</div>`;
     }
 
-    const moistureText = moistureValid ? `${Math.round(moisture)} %` : "Indisponible";
-    const batteryText = batteryValid ? `${Math.round(battery)} %` : "Indisponible";
+    const moistureText = moistureValid ? `${Math.round(moisture)} %` : T.unavailable;
+    const batteryText = batteryValid ? `${Math.round(battery)} %` : T.unavailable;
     const batteryLow = batteryValid && Number.isFinite(batteryThreshold) && battery < batteryThreshold;
     this._root.innerHTML = `
       <ha-card>
@@ -227,21 +348,21 @@ class PlantManagerDetailCard extends HTMLElement {
           <div class="heading"><h2>${esc(this.config.title || name)}</h2>${speciesLine}<span class="status ${tone}"><ha-icon icon="${statusIcon}"></ha-icon>${statusLabel}</span></div>
         </header>
         <section class="metric">
-          <div class="metric-heading"><span><ha-icon icon="mdi:water-percent"></ha-icon> Humidité du sol</span><strong>${moistureText}</strong></div>
-          <div class="track" role="progressbar" aria-label="Humidité du sol" aria-valuemin="0" aria-valuemax="100" ${moistureValid ? `aria-valuenow="${Math.round(moisture)}"` : 'aria-valuetext="Indisponible"'}>
+          <div class="metric-heading"><span><ha-icon icon="mdi:water-percent"></ha-icon> ${T.soilMoisture}</span><strong>${moistureText}</strong></div>
+          <div class="track" role="progressbar" aria-label="${T.soilMoisture}" aria-valuemin="0" aria-valuemax="100" ${moistureValid ? `aria-valuenow="${Math.round(moisture)}"` : `aria-valuetext="${T.unavailable}"`}>
             <div class="fill ${tone}" style="width:${moistureValid ? moisture : 0}%"></div>
           </div>
-          <div class="thresholds"><span>Seuil bas : ${Number.isFinite(low) ? `${low} %` : "—"}</span><span>Seuil haut : ${Number.isFinite(high) ? `${high} %` : "—"}</span></div>
-          <div class="updated">Dernière mesure : ${ageLabel}</div>
+          <div class="thresholds"><span>${T.lowThreshold(Number.isFinite(low) ? `${low} %` : "—")}</span><span>${T.highThreshold(Number.isFinite(high) ? `${high} %` : "—")}</span></div>
+          <div class="updated">${T.lastReading(ageLabel)}</div>
         </section>
         ${watered || nextWatering ? `<section class="watering">
-          <div><span>Dernier arrosage</span><strong>${watered ? watered.replace(/^./, (c) => c.toUpperCase()) : "—"}</strong></div>
-          <div><span>Prochain arrosage</span><strong>${nextWatering ? nextWatering.replace(/^./, (c) => c.toUpperCase()) : "—"}</strong></div>
+          <div><span>${T.lastWatered}</span><strong>${watered ? plantManagerDetailCapitalize(watered) : "—"}</strong></div>
+          <div><span>${T.nextWatering}</span><strong>${nextWatering ? plantManagerDetailCapitalize(nextWatering) : "—"}</strong></div>
         </section>` : ""}
         <section class="history">${chart}</section>
         ${a.battery_entity ? `<section class="battery-row">
           <div class="battery-icon"><ha-icon icon="${batteryLow ? "mdi:battery-alert" : "mdi:battery-medium"}"></ha-icon></div>
-          <div class="battery-copy"><strong>Batterie du capteur</strong><span>Seuil d'alerte : ${Number.isFinite(batteryThreshold) ? `${batteryThreshold} %` : "25 %"}</span></div>
+          <div class="battery-copy"><strong>${T.battery}</strong><span>${T.batteryThreshold(Number.isFinite(batteryThreshold) ? `${batteryThreshold} %` : "25 %")}</span></div>
           <strong class="battery-value ${batteryLow ? "low" : ""}">${batteryText}</strong>
         </section>` : ""}
         <section class="advice"><ha-icon icon="mdi:lightbulb-outline"></ha-icon><span>${advice}</span></section>
@@ -280,6 +401,8 @@ class PlantManagerDetailCard extends HTMLElement {
         .history-heading{color:var(--secondary-text-color)}.history-heading strong{color:var(--primary-text-color)}
         .history svg{display:block;width:100%;height:70px;margin-top:8px;overflow:visible}
         .history-range{color:var(--secondary-text-color);font-size:10px}
+        .threshold{stroke-width:1;stroke-dasharray:3 3;opacity:.7}
+        .threshold.low{stroke:var(--error-color,#c62828)}.threshold.high{stroke:var(--warning-color,#b7791f)}
         .history-empty{color:var(--secondary-text-color);font-size:12px}
         .battery-row{display:flex;align-items:center;gap:12px;padding:14px 18px;border-top:1px solid var(--divider-color)}
         .battery-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--secondary-background-color)}
@@ -298,12 +421,7 @@ class PlantManagerDetailCard extends HTMLElement {
 if (!customElements.get("plant-manager-detail-card")) {
   customElements.define("plant-manager-detail-card", PlantManagerDetailCard);
 }
-const PLANT_MANAGER_DETAIL_LABELS = {
-  entity: "Plante",
-  title: "Titre (facultatif)",
-  show_history: "Afficher l'historique sur 24 h",
-};
-const PLANT_MANAGER_DETAIL_SCHEMA = [
+const plantManagerDetailSchema = (T) => [
   {
     name: "entity",
     required: true,
@@ -311,6 +429,10 @@ const PLANT_MANAGER_DETAIL_SCHEMA = [
   },
   { name: "title", selector: { text: {} } },
   { name: "show_history", selector: { boolean: {} } },
+  {
+    name: "history_days",
+    selector: { select: { mode: "dropdown", options: Object.entries(T.editor.days).map(([value, label]) => ({ value, label })) } },
+  },
 ];
 
 class PlantManagerDetailCardEditor extends HTMLElement {
@@ -328,7 +450,8 @@ class PlantManagerDetailCardEditor extends HTMLElement {
     if (!this._config) return;
     if (!this._form) {
       this._form = document.createElement("ha-form");
-      this._form.computeLabel = (schema) => PLANT_MANAGER_DETAIL_LABELS[schema.name] || schema.name;
+      this._form.computeLabel = (schema) =>
+        plantManagerDetailText(plantManagerDetailLanguage(this._hass)).editor[schema.name] || schema.name;
       this._form.addEventListener("value-changed", (event) => {
         this._config = event.detail.value;
         this.dispatchEvent(new CustomEvent("config-changed", {
@@ -340,8 +463,10 @@ class PlantManagerDetailCardEditor extends HTMLElement {
       this.appendChild(this._form);
     }
     this._form.hass = this._hass;
-    this._form.schema = PLANT_MANAGER_DETAIL_SCHEMA;
-    this._form.data = { show_history: true, ...this._config };
+    this._form.schema = plantManagerDetailSchema(plantManagerDetailText(plantManagerDetailLanguage(this._hass)));
+    // The select works with strings; the card accepts the number too.
+    const data = { show_history: true, history_days: "1", ...this._config };
+    this._form.data = { ...data, history_days: String(data.history_days) };
   }
 }
 
@@ -353,8 +478,9 @@ window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === "plant-manager-detail-card")) {
   window.customCards.push({
     type: "plant-manager-detail-card",
-    name: "Plant Manager — Fiche plante",
-    description: "Affiche les détails, seuils, batterie et l'historique d'une plante.",
+    // The card picker is shown in the interface language, set on <html lang>.
+    name: plantManagerDetailText(plantManagerDetailPageLanguage()).name,
+    description: plantManagerDetailText(plantManagerDetailPageLanguage()).description,
     preview: true,
   });
 }

@@ -164,7 +164,10 @@ test("draws the 24-hour history from the websocket answer", async () => {
   await new Promise((resolve) => setImmediate(resolve));
   const html = card.shadowRoot.innerHTML;
   assert.match(html, /Évolution sur 24 h<\/span><strong>En baisse/);
-  assert.match(html, /points="0\.0,6\.0 50\.0,28\.0 100\.0,28\.0"/);
+  // The scale spans the thresholds (30 and 75 %) as well as the readings.
+  assert.match(html, /points="0\.0,13\.3 50\.0,16\.3 100\.0,16\.3"/);
+  assert.match(html, /class="threshold low"[^>]*y1="28\.0"/);
+  assert.match(html, /class="threshold high"[^>]*y1="6\.0"/);
   assert.match(html, /54 % min\./);
   assert.match(html, /60 % max\./);
 });
@@ -178,7 +181,7 @@ test("draws a flat line when moisture did not change", async () => {
   };
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(card.shadowRoot.innerHTML, /<strong>Stable<\/strong>/);
-  assert.match(card.shadowRoot.innerHTML, /points="0\.0,17\.0 100\.0,17\.0"/);
+  assert.match(card.shadowRoot.innerHTML, /points="0\.0,6\.0 100\.0,6\.0"/);
 });
 
 test("hides the battery section when the plant has no battery sensor", () => {
@@ -245,4 +248,37 @@ test("shows the last and next watering", () => {
 
 test("hides the watering section without watering data", () => {
   assert.doesNotMatch(render({ "sensor.monstera_status": plant() }), /class="watering"/);
+});
+
+test("speaks English to an English interface", () => {
+  const card = new DetailCard();
+  card.setConfig({ entity: "sensor.monstera_status", show_history: false });
+  card.hass = {
+    language: "en",
+    states: { "sensor.monstera_status": plant("needs_water", { moisture: 20 }) },
+  };
+  const html = card.shadowRoot.innerHTML;
+  assert.match(html, /Needs water/);
+  assert.match(html, /Soil moisture/);
+  assert.match(html, /Low threshold: 30 %/);
+  assert.match(html, /Check the soil and water if needed/);
+  assert.doesNotMatch(html, /Humidité/);
+});
+
+test("requests the configured history length", async () => {
+  const requests = [];
+  const card = new DetailCard();
+  card.setConfig({ entity: "sensor.monstera_status", history_days: 7 });
+  card.hass = {
+    states: { "sensor.monstera_status": plant("ok", { moisture_entity: "sensor.monstera_moisture" }) },
+    callWS: (request) => { requests.push(request); return Promise.resolve(wsHistory([{ state: "50" }, { state: "48" }])); },
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  const days = (Date.parse(requests[0].end_time) - Date.parse(requests[0].start_time)) / 86400000;
+  assert.equal(Math.round(days), 7);
+  assert.match(card.shadowRoot.innerHTML, /Évolution sur 7 j/);
+});
+
+test("takes half of a sections dashboard by default", () => {
+  assert.deepEqual(JSON.parse(JSON.stringify(new DetailCard().getGridOptions())), { columns: 6, min_columns: 4 });
 });
