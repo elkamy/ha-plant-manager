@@ -4,7 +4,6 @@ from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
 from .sensor import plant_device_info
 
 
@@ -25,4 +24,4 @@ class WateredButton(ButtonEntity):
         self._attr_device_info = plant_device_info(entry)
 
     async def async_press(self) -> None:
-        self.hass.data[DOMAIN][self.entry.entry_id]["mark_watered"]()
+        self.entry.runtime_data["mark_watered"]()

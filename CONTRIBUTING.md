@@ -36,6 +36,8 @@ node --check custom_components/plant_manager/www/plant-manager-detail-card.js
 node --test tests/test_card.js tests/test_detail_card.js
 python -m json.tool custom_components/plant_manager/manifest.json > /dev/null
 python -m json.tool hacs.json > /dev/null
+# Dans un vrai Home Assistant (pip install pytest-homeassistant-custom-component) :
+python -m pytest
 ```
 
 Les pull requests doivent expliquer le problème résolu, les changements apportés et la façon dont ils ont été testés.

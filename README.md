@@ -257,6 +257,13 @@ node --check custom_components/plant_manager/www/plant-manager-detail-card.js
 node --test tests/test_card.js tests/test_detail_card.js
 ```
 
+Les tests de `tests_ha/` s'exécutent dans un vrai Home Assistant (flux de configuration, entités, notifications) :
+
+```bash
+pip install pytest-homeassistant-custom-component
+python -m pytest
+```
+
 La CI vérifie également les métadonnées JSON, HACS et Hassfest.
 
 Pour contribuer, consultez [CONTRIBUTING.md](CONTRIBUTING.md). Pour signaler un bug ou demander une fonctionnalité, [ouvrez une issue](https://github.com/elkamy/ha-plant-manager/issues/new/choose).

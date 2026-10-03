@@ -20,6 +20,8 @@ class FakeConfigEntry:
         self.options = options or {}
         self.title = title
         self.entry_id = entry_id
+        self.version = 1
+        self.minor_version = 2
         self.unload_callbacks = []
 
     def async_on_unload(self, callback):
@@ -573,7 +575,7 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
 
         hass.fire("mobile_app_notification_action", {"action": "PLANT_MANAGER_WATERED_test-entry"})
         self.assertTrue(hass.cancelled_delayed[1]["cancelled"])
-        tracker = hass.data["plant_manager"]["test-entry"]["watering"]
+        tracker = entry.runtime_data["watering"]
         self.assertIsNotNone(tracker.last_watered)
         self.assertIn("plant_manager_test-entry_updated", hass.dispatched)
         self.assertIsNotNone(hass.stored["plant_manager.watering"]["test-entry"]["last_watered"])
@@ -602,13 +604,42 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(hass.delays[0], 8 * 3600)
 
     async def test_moisture_rise_is_recorded_as_a_watering(self):
-        hass, _entry = await self.setup_with()
-        tracker = hass.data["plant_manager"]["test-entry"]["watering"]
+        hass, entry = await self.setup_with()
+        tracker = entry.runtime_data["watering"]
         for old, new in ((None, 30), (30, 31), (31, 70), (70, 69)):
             # Readings an hour apart, as their timestamps tell.
             tracker.readings = [(t - 3600, v) for t, v in tracker.readings]
             self.moisture(hass, old, new)
         self.assertIsNotNone(tracker.last_watered)
+
+    async def test_diagnostics_summarise_the_plant_and_hide_notify_targets(self):
+        diagnostics_api = types.ModuleType("homeassistant.components.diagnostics")
+        diagnostics_api.async_redact_data = lambda data, keys: {
+            k: ("**REDACTED**" if k in keys else v) for k, v in data.items()
+        }
+        components = sys.modules.setdefault(
+            "homeassistant.components", types.ModuleType("homeassistant.components")
+        )
+        components.__path__ = getattr(components, "__path__", [])
+        sys.modules[diagnostics_api.__name__] = diagnostics_api
+        self.addCleanup(sys.modules.pop, diagnostics_api.__name__, None)
+        spec = importlib.util.spec_from_file_location(
+            "custom_components.plant_manager.diagnostics",
+            INTEGRATION_PATH.parent / "diagnostics.py",
+        )
+        diagnostics = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(diagnostics)
+
+        hass, entry = await self.setup_with()
+        self.moisture(hass, 31, 25)
+        result = await diagnostics.async_get_config_entry_diagnostics(hass, entry)
+
+        self.assertEqual(result["entry"]["options"]["notify_service"], "**REDACTED**")
+        self.assertEqual(result["entry"]["options"]["low_threshold"], 30)
+        self.assertEqual(result["sensors"]["moisture"]["state"], "25")
+        self.assertTrue(result["alerts"]["moisture"]["pending"])
+        self.assertEqual(result["watering"]["readings"], 1)
+        self.assertEqual(result["watering"]["last_reading"][1], 25.0)
 
     async def test_pending_battery_alert_is_cancelled_on_unload(self):
         hass, entry = await self.setup_integration(with_battery=True)

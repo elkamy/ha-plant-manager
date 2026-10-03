@@ -1,5 +1,14 @@
 # Journal des modifications
 
+## [1.5.0] — non publié
+
+### Ajouté
+- Diagnostics téléchargeables pour chaque plante (état des alertes, mesures suivies, vitesse de dessèchement), sans les destinataires de notification.
+
+### Maintenance
+- L'état de chaque plante est conservé dans `entry.runtime_data`, comme le recommande Home Assistant.
+- Nouveaux tests exécutés dans un vrai Home Assistant (`tests_ha/`, avec `pytest-homeassistant-custom-component`) pour les flux de création, d'options et de reconfiguration, les entités et les notifications, et job CI correspondant.
+
 ## [1.4.0] — non publié
 
 ### Ajouté

@@ -24,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     from .areas import moisture_area_name
 
     area = moisture_area_name(hass, entry.data[CONF_MOISTURE_ENTITY])
-    tracker = hass.data[DOMAIN][entry.entry_id]["watering"]
+    tracker = entry.runtime_data["watering"]
     async_add_entities([
         PlantStatusSensor(hass, entry, suggested_area=area, tracker=tracker),
         LastWateredSensor(hass, entry, tracker),

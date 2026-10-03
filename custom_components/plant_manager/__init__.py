@@ -72,7 +72,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     ])
     # Bump the query version when changing card JavaScript to invalidate caches.
     for _filename, url in cards:
-        add_extra_js_url(hass, f"{url}?v=1.4.0")
+        add_extra_js_url(hass, f"{url}?v=1.5.0")
     hass.data.setdefault(DOMAIN, {})
     return True
 
@@ -114,7 +114,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             f"{kind}_alert_cancel": None,
             f"{kind}_reminder_cancel": None,
         })
-    hass.data[DOMAIN][entry.entry_id] = entry_data
+    # The alert and watering state of this plant, read by its entities.
+    entry.runtime_data = entry_data
 
     @callback
     def _watering_changed() -> None:
@@ -495,9 +496,7 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
-    return unload_ok
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
