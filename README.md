@@ -8,6 +8,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/elkamy/ha-plant-manager?label=Release&logo=github)](https://github.com/elkamy/ha-plant-manager/releases)
 [![Last Commit](https://img.shields.io/github/last-commit/elkamy/ha-plant-manager?label=Last%20commit)](https://github.com/elkamy/ha-plant-manager/commits/main)
 [![GitHub Stars](https://img.shields.io/github/stars/elkamy/ha-plant-manager?style=social)](https://github.com/elkamy/ha-plant-manager/stargazers)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-orange?logo=buymeacoffee&logoColor=white)](https://buymeacoffee.com/elkamy)
 [![Validate](https://github.com/elkamy/ha-plant-manager/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/elkamy/ha-plant-manager/actions/workflows/validate.yml)
 [![Hassfest](https://github.com/elkamy/ha-plant-manager/actions/workflows/hassfest.yml/badge.svg?branch=main)](https://github.com/elkamy/ha-plant-manager/actions/workflows/hassfest.yml)
 [![HACS validation](https://github.com/elkamy/ha-plant-manager/actions/workflows/hacs.yml/badge.svg?branch=main)](https://github.com/elkamy/ha-plant-manager/actions/workflows/hacs.yml)
