@@ -26,11 +26,6 @@ class FakeDeviceRegistry:
     def async_get(self, device_id):
         return self.devices.get(device_id)
 
-    def async_get_device(self, identifiers):
-        return next(
-            (d for d in self.devices.values() if identifiers & d.identifiers), None
-        )
-
     def async_update_device(self, device_id, **changes):
         self.updates.append((device_id, changes))
 
@@ -57,6 +52,10 @@ def install_registries(entities, devices, areas):
     ):
         module = types.ModuleType(f"homeassistant.helpers.{name}")
         module.async_get = lambda hass, registry=registry: registry
+        if name == "device_registry":
+            module.async_entries_for_config_entry = lambda registry, entry_id: [
+                d for d in registry.devices.values() if entry_id in d.config_entries
+            ]
         sys.modules[module.__name__] = module
         setattr(sys.modules["homeassistant.helpers"], name, module)
     return registries
@@ -93,8 +92,13 @@ def entity(area_id=None, device_id=None):
     return types.SimpleNamespace(area_id=area_id, device_id=device_id)
 
 
-def device(area_id=None, identifiers=frozenset()):
-    return types.SimpleNamespace(area_id=area_id, identifiers=set(identifiers), id="plant-device")
+def device(area_id=None, identifiers=frozenset(), config_entries=frozenset()):
+    return types.SimpleNamespace(
+        area_id=area_id,
+        identifiers=set(identifiers),
+        config_entries=set(config_entries),
+        id="plant-device",
+    )
 
 
 class MoistureAreaTests(unittest.TestCase):
@@ -125,16 +129,26 @@ class AssignPlantAreaTests(unittest.TestCase):
     def test_existing_plant_without_area_joins_its_sensor_area(self):
         registries = install_registries(
             {"sensor.kentia_moisture": entity(area_id="salon")},
-            {"plant": device(identifiers={("plant_manager", "entry-1")})},
+            {"plant": device(identifiers={("plant_manager", "entry-1")}, config_entries={"entry-1"})},
             {"salon": "Salon"},
         )
         AREAS.assign_plant_area(None, "entry-1", "sensor.kentia_moisture")
         self.assertEqual(registries.device.updates, [("plant-device", {"area_id": "salon"})])
 
+    def test_ignores_devices_of_other_config_entries(self):
+        # The sensor's own device shares no identifier with the plant device.
+        registries = install_registries(
+            {"sensor.kentia_moisture": entity(area_id="salon")},
+            {"flora": device(identifiers={("mqtt", "flora")}, config_entries={"mqtt-entry"})},
+            {"salon": "Salon"},
+        )
+        AREAS.assign_plant_area(None, "entry-1", "sensor.kentia_moisture")
+        self.assertEqual(registries.device.updates, [])
+
     def test_area_chosen_by_the_user_is_kept(self):
         registries = install_registries(
             {"sensor.kentia_moisture": entity(area_id="salon")},
-            {"plant": device(area_id="bureau", identifiers={("plant_manager", "entry-1")})},
+            {"plant": device(area_id="bureau", identifiers={("plant_manager", "entry-1")}, config_entries={"entry-1"})},
             {"salon": "Salon"},
         )
         AREAS.assign_plant_area(None, "entry-1", "sensor.kentia_moisture")

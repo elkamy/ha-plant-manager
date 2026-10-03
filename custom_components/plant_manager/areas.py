@@ -37,7 +37,16 @@ def assign_plant_area(hass: HomeAssistant, entry_id: str, entity_id: str) -> Non
     from .const import DOMAIN
 
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, entry_id)})
+    # Looked up through the config entry: async_get_device(identifiers=...) is
+    # deprecated since identifiers are no longer unique across entries.
+    device = next(
+        (
+            device
+            for device in dr.async_entries_for_config_entry(registry, entry_id)
+            if (DOMAIN, entry_id) in device.identifiers
+        ),
+        None,
+    )
     if device is None or device.area_id is not None:
         return
     area_id = moisture_area_id(hass, entity_id)
