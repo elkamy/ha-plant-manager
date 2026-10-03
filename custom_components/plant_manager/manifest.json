@@ -5,8 +5,8 @@
   "config_flow": true,
   "dependencies": ["frontend", "http"],
   "documentation": "https://github.com/elkamy/ha-plant-manager",
-  "iot_class": "local_push",
+  "iot_class": "calculated",
   "issue_tracker": "https://github.com/elkamy/ha-plant-manager/issues",
   "requirements": [],
-  "version": "0.2.7"
+  "version": "1.0.0"
 }

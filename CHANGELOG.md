@@ -1,9 +1,35 @@
 # Journal des modifications
 
-## Non publié
+## [1.0.0] — 2026-10-03
+
+Première version stable de Plant Manager.
+
+### ⚠️ Changements incompatibles
+- Le capteur de statut publie désormais des états stables, traduits dans l'interface : `needs_water`, `ok`, `too_wet` (au lieu de `à arroser`, `OK`, `très humide`). Mettez à jour les automatisations et modèles qui comparent ces valeurs.
+- Une mesure d'humidité invalide donne l'état `unknown` au lieu de rendre l'entité indisponible.
+- L'attribut `battery` est désormais un nombre validé (0–100) ou `null`, et non plus l'état brut du capteur.
+- Version minimale de Home Assistant relevée à 2024.11.0, nécessaire au formulaire d'options.
 
 ### Ajouté
 - Nouvelle carte Lovelace `plant-manager-detail-card` pour afficher une fiche individuelle avec humidité, seuils, batterie, dernière mesure et historique sur 24 h.
+- Éditeur visuel et aperçu dans le sélecteur de cartes pour les deux cartes.
+- Reconfiguration d'une plante pour changer son capteur d'humidité ou de batterie sans la recréer.
+- Notifications vers les entités de notification (`notify.send_message`), en plus des services `notify.*`.
+- Traduction anglaise du flux de configuration, des options et des états du capteur.
+- README : boutons My Home Assistant, documentation des états et attributs, tableaux d'options des cartes, guide de mise à jour et de désinstallation.
+
+### Corrigé
+- Une plante dont le capteur d'humidité est indisponible ne disparaît plus des cartes.
+- Les cartes ne se redessinent plus à chaque changement d'état de Home Assistant, seulement quand une plante ou son capteur change ; l'ancienneté de la dernière mesure est rafraîchie chaque minute.
+- La fiche détaillée accepte les mêmes chemins d'image que la liste (`/local/`, `/api/`, `/media/`).
+- Libellé manquant pour l'option « Notifications activées ».
+- Les alertes programmées n'accumulent plus de callbacks d'annulation jusqu'au rechargement de la plante.
+
+### Maintenance
+- Logique d'alerte humidité et batterie regroupée dans une fonction commune.
+- Choix du capteur d'humidité via un sélecteur d'entité.
+- `iot_class` passe à `calculated`, l'état étant calculé à partir d'autres entités.
+- Suppression de `info.md`, qui n'est plus utilisé par HACS 2.
 
 ## [0.2.7] — 2026-10-02
 
@@ -14,8 +40,6 @@
 
 ### Tests
 - Tests de non-régression sur la récupération puis le retour à un état sec ou à une batterie faible avant l'expiration du délai.
-
-# Journal des modifications
 
 ## [0.2.6] — 2026-10-02
 
