@@ -1,5 +1,10 @@
 # Journal des modifications
 
+## [1.1.1] — 2026-10-03
+
+### Corrigé
+- La mise en place de la pièce des plantes existantes n'utilise plus une fonction de Home Assistant dépréciée, qui aurait empêché le chargement des plantes à partir de Home Assistant 2027.8.
+
 ## [1.1.0] — 2026-10-03
 
 ### Ajouté

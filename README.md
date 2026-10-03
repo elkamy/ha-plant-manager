@@ -129,7 +129,7 @@ trigger:
 
 ## Cartes Lovelace
 
-L'intégration enregistre automatiquement le JavaScript des cartes au démarrage. Après une mise à jour, redémarrez Home Assistant puis rechargez le tableau de bord. Une ancienne ressource manuelle `/local/plant-manager-card.js` peut être supprimée si elle est encore configurée.
+L'intégration enregistre automatiquement le JavaScript des cartes au démarrage. Après une mise à jour, redémarrez Home Assistant puis forcez le rechargement du tableau de bord (**Ctrl+Maj+R** dans le navigateur ; dans l'application mobile, **Paramètres de l'application → Débogage → Réinitialiser le cache du frontend**) : sans cela, le navigateur peut continuer à utiliser les anciennes cartes. Une ancienne ressource manuelle `/local/plant-manager-card.js` peut être supprimée si elle est encore configurée.
 
 Les deux cartes apparaissent dans le sélecteur de cartes (**Ajouter une carte → Plant Manager**) et se configurent avec l'éditeur visuel ou en YAML.
 
