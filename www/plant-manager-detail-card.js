@@ -8,6 +8,21 @@ const PLANT_MANAGER_DETAIL_UNKNOWN = [
   "Indisponible", "neutral", "mdi:help-circle-outline", "Vérifiez le capteur et sa connexion.",
 ];
 
+// history/history_during_period answers {entity_id: [{s, lc, lu}]}: the state
+// is in "s" and the timestamps are in seconds, "lc" being omitted when it
+// equals "lu".
+const plantManagerDetailHistorySamples = (result, entityId) =>
+  (Array.isArray(result?.[entityId]) ? result[entityId] : []).map((sample) => {
+    const raw = sample?.s;
+    const value = raw === null || raw === undefined || String(raw).trim() === ""
+      ? NaN : Number(raw);
+    const seconds = Number(sample?.lc ?? sample?.lu);
+    return {
+      value: Number.isFinite(value) && value >= 0 && value <= 100 ? value : NaN,
+      timestamp: Number.isFinite(seconds) ? seconds * 1000 : NaN,
+    };
+  });
+
 class PlantManagerDetailCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("plant-manager-detail-card-editor");
@@ -52,6 +67,11 @@ class PlantManagerDetailCard extends HTMLElement {
     return 4;
   }
 
+  get _root() {
+    // A shadow root keeps this card's styles from leaking into other cards.
+    return this.shadowRoot || this.attachShadow({ mode: "open" });
+  }
+
   render() {
     if (!this._hass || !this.config) return;
     const plant = this._hass.states[this.config.entity];
@@ -59,7 +79,7 @@ class PlantManagerDetailCard extends HTMLElement {
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     }[c]));
     if (!plant || plant.attributes?.plant_manager !== true) {
-      this.innerHTML = `<ha-card><div class="empty">Entité Plant Manager introuvable : ${esc(this.config.entity)}</div></ha-card>`;
+      this._root.innerHTML = `<ha-card><div class="empty">Entité Plant Manager introuvable : ${esc(this.config.entity)}</div></ha-card>`;
       return;
     }
 
@@ -108,12 +128,13 @@ class PlantManagerDetailCard extends HTMLElement {
         minimal_response: false,
         no_attributes: true,
       }).then((result) => {
-        const samples = Array.isArray(result?.[0]) ? result[0] : [];
-        const valid = samples.map((sample) => ({
-          value: Number(sample?.state),
-          timestamp: Date.parse(sample?.last_changed || sample?.last_updated || ""),
-        })).filter((sample) => Number.isFinite(sample.value)
-          && sample.value >= 0 && sample.value <= 100);
+        const valid = plantManagerDetailHistorySamples(result, moistureEntity)
+          .filter((sample) => Number.isFinite(sample.value));
+        // The last reading still holds now: extend it so the line spans the
+        // period, and a value unchanged for 24 h draws a flat line.
+        if (valid.length) {
+          valid.push({ value: valid[valid.length - 1].value, timestamp: Date.now() });
+        }
         this._historyCache = {
           entity: moistureEntity,
           fetchedAt: Date.now(),
@@ -134,6 +155,7 @@ class PlantManagerDetailCard extends HTMLElement {
       const min = Math.min(...history);
       const max = Math.max(...history);
       const range = Math.max(max - min, 1);
+      const flat = max === min;
       const times = this._historyCache.timestamps || [];
       const timed = times.length === history.length && times.every(Number.isFinite)
         && Math.max(...times) > Math.min(...times);
@@ -141,7 +163,7 @@ class PlantManagerDetailCard extends HTMLElement {
       const span = timed ? Math.max(...times) - first : 0;
       const points = history.map((value, index) => {
         const x = timed ? (times[index] - first) * 100 / span : index * 100 / (history.length - 1);
-        const y = 28 - ((value - min) / range) * 22;
+        const y = flat ? 17 : 28 - ((value - min) / range) * 22;
         return `${x.toFixed(1)},${y.toFixed(1)}`;
       }).join(" ");
       const delta = history[history.length - 1] - history[0];
@@ -158,7 +180,7 @@ class PlantManagerDetailCard extends HTMLElement {
     const moistureText = moistureValid ? `${Math.round(moisture)} %` : "Indisponible";
     const batteryText = batteryValid ? `${Math.round(battery)} %` : "Indisponible";
     const batteryLow = batteryValid && Number.isFinite(batteryThreshold) && battery < batteryThreshold;
-    this.innerHTML = `
+    this._root.innerHTML = `
       <ha-card>
         <header>
           ${safeImage ? `<img src="${esc(safeImage)}" alt="${esc(name)}" />` : '<div class="plant-icon"><ha-icon icon="mdi:flower"></ha-icon></div>'}
@@ -173,14 +195,15 @@ class PlantManagerDetailCard extends HTMLElement {
           <div class="updated">Dernière mesure : ${ageLabel}</div>
         </section>
         <section class="history">${chart}</section>
-        <section class="battery-row">
+        ${a.battery_entity ? `<section class="battery-row">
           <div class="battery-icon"><ha-icon icon="${batteryLow ? "mdi:battery-alert" : "mdi:battery-medium"}"></ha-icon></div>
           <div class="battery-copy"><strong>Batterie du capteur</strong><span>Seuil d'alerte : ${Number.isFinite(batteryThreshold) ? `${batteryThreshold} %` : "25 %"}</span></div>
           <strong class="battery-value ${batteryLow ? "low" : ""}">${batteryText}</strong>
-        </section>
+        </section>` : ""}
         <section class="advice"><ha-icon icon="mdi:lightbulb-outline"></ha-icon><span>${advice}</span></section>
       </ha-card>
       <style>
+        :host{display:block}
         ha-card{overflow:hidden;border-radius:var(--ha-card-border-radius,16px);color:var(--primary-text-color)}
         header{display:flex;align-items:center;gap:14px;padding:18px}
         header img,.plant-icon{width:76px;height:76px;flex:0 0 76px;object-fit:cover;border-radius:18px;background:var(--secondary-background-color)}

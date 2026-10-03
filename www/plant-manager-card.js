@@ -17,6 +17,21 @@ const PLANT_MANAGER_UNKNOWN_STATUS = {
   label: "Indisponible", tone: "neutral", icon: "mdi:help-circle-outline", order: 3,
   advice: "Vérifiez le capteur et sa connexion.",
 };
+// history/history_during_period answers {entity_id: [{s, lc, lu}]}: the state
+// is in "s" and the timestamps are in seconds, "lc" being omitted when it
+// equals "lu".
+const plantManagerHistorySamples = (result, entityId) =>
+  (Array.isArray(result?.[entityId]) ? result[entityId] : []).map((sample) => {
+    const raw = sample?.s;
+    const value = raw === null || raw === undefined || String(raw).trim() === ""
+      ? NaN : Number(raw);
+    const seconds = Number(sample?.lc ?? sample?.lu);
+    return {
+      value: Number.isFinite(value) && value >= 0 && value <= 100 ? value : NaN,
+      timestamp: Number.isFinite(seconds) ? seconds * 1000 : NaN,
+    };
+  });
+
 const plantManagerStatus = (plant) =>
   PLANT_MANAGER_STATUSES[String(plant?.state || "").toLowerCase()]
   || PLANT_MANAGER_UNKNOWN_STATUS;
@@ -67,6 +82,11 @@ class PlantManagerCard extends HTMLElement {
 
   getCardSize() {
     return 4;
+  }
+
+  get _root() {
+    // A shadow root keeps this card's styles from leaking into other cards.
+    return this.shadowRoot || this.attachShadow({ mode: "open" });
   }
 
   render() {
@@ -140,23 +160,17 @@ class PlantManagerCard extends HTMLElement {
         minimal_response: false,
         no_attributes: true,
       }).then((result) => {
-        const samples = Array.isArray(result?.[0]) ? result[0] : [];
-        const parseMoisture = (sample) => {
-          const state = sample?.state;
-          if (state === null || state === undefined || String(state).trim() === "") return NaN;
-          const value = Number(state);
-          return Number.isFinite(value) && value >= 0 && value <= 100 ? value : NaN;
-        };
+        const samples = plantManagerHistorySamples(result, entityId);
         // Keep invalid samples in the sequence while detecting a rise: an
         // unknown/unavailable reading must break continuity, not create a
         // false jump between two measurements several hours apart.
-        const sampleValues = samples.map(parseMoisture);
-        const validSamples = samples
-          .map((sample, index) => ({
-            value: sampleValues[index],
-            timestamp: Date.parse(sample?.last_changed || sample?.last_updated || ""),
-          }))
-          .filter((sample) => Number.isFinite(sample.value));
+        const sampleValues = samples.map((sample) => sample.value);
+        const validSamples = samples.filter((sample) => Number.isFinite(sample.value));
+        // The last reading still holds now: extend it so the line spans the
+        // period, and a value unchanged for 24 h draws a flat line.
+        if (validSamples.length) {
+          validSamples.push({ value: validSamples[validSamples.length - 1].value, timestamp: Date.now() });
+        }
         const points = validSamples.map((sample) => sample.value);
         const timestamps = validSamples.map((sample) => sample.timestamp);
         // A sudden increase can indicate watering, but moisture sensors can
@@ -175,7 +189,9 @@ class PlantManagerCard extends HTMLElement {
         if (this.isConnected !== false) this.render();
       });
     };
-    const tapAction = this.config.tap_action === "none" ? "none" : "more-info";
+    // Accepts both "none" and Home Assistant's { action: "none" } syntax.
+    const tapAction = (this.config.tap_action?.action ?? this.config.tap_action) === "none"
+      ? "none" : "more-info";
 
     const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -229,6 +245,7 @@ class PlantManagerCard extends HTMLElement {
         const min = Math.min(...history);
         const max = Math.max(...history);
         const range = Math.max(max - min, 1);
+        const flat = max === min;
         const timestamps = historyEntry.timestamps || [];
         const hasUsableTimeline = timestamps.length === history.length
           && timestamps.every(Number.isFinite)
@@ -241,7 +258,7 @@ class PlantManagerCard extends HTMLElement {
           const x = history.length === 1 ? 0 : hasUsableTimeline
             ? (timestamps[index] - firstTimestamp) * 100 / timeRange
             : index * 100 / (history.length - 1);
-          const y = 28 - ((value - min) / range) * 22;
+          const y = flat ? 17 : 28 - ((value - min) / range) * 22;
           return `${x.toFixed(1)},${y.toFixed(1)}`;
         }).join(" ");
         const trend = history[history.length - 1] - history[0];
@@ -305,7 +322,7 @@ class PlantManagerCard extends HTMLElement {
         </div>`
       : "";
 
-    this.innerHTML = `
+    this._root.innerHTML = `
       <ha-card class="${compact ? "compact" : ""}">
         <div class="card-header">
           <div class="header-icon"><ha-icon icon="mdi:leaf"></ha-icon></div>
@@ -320,6 +337,7 @@ class PlantManagerCard extends HTMLElement {
         </div>
       </ha-card>
       <style>
+        :host { display: block; }
         ha-card {
           overflow: hidden;
           border-radius: var(--ha-card-border-radius, 16px);
@@ -504,7 +522,7 @@ class PlantManagerCard extends HTMLElement {
         }
       </style>`;
     if (tapAction !== "none") {
-      this.querySelectorAll(".plant[role=button]").forEach((row) => {
+      this._root.querySelectorAll(".plant[role=button]").forEach((row) => {
         const showDetails = () => {
           this.dispatchEvent(new CustomEvent("hass-more-info", {
             detail: { entityId: row.dataset.entityId },

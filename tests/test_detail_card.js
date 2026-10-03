@@ -5,6 +5,10 @@ const test = require("node:test");
 
 class FakeHTMLElement {
   querySelectorAll() { return []; }
+  attachShadow() {
+    this.shadowRoot = { innerHTML: "", querySelectorAll: () => [] };
+    return this.shadowRoot;
+  }
 }
 const registry = new Map();
 const context = {
@@ -22,12 +26,21 @@ vm.runInNewContext(
 );
 const DetailCard = registry.get("plant-manager-detail-card");
 
+// Shape of a history/history_during_period websocket answer: states under the
+// entity ID, with the state in "s" and timestamps in seconds.
+function wsHistory(samples, entityId = "sensor.monstera_moisture") {
+  return {
+    [entityId]: samples.map(({ state, lu }) => (lu === undefined ? { s: state } : { s: state, lu })),
+  };
+}
+
 function plant(state = "OK", attributes = {}) {
   return {
     entity_id: "sensor.monstera_status",
     state,
     attributes: { plant_manager: true, plant_name: "Monstera", moisture: 54,
       low_threshold: 30, high_threshold: 75, battery: 82,
+      battery_entity: "sensor.monstera_battery",
       battery_low_threshold: 25, ...attributes },
   };
 }
@@ -36,7 +49,7 @@ function render(states, config = { entity: "sensor.monstera_status" }) {
   const card = new DetailCard();
   card.setConfig(config);
   card.hass = { states };
-  return card.innerHTML;
+  return card.shadowRoot.innerHTML;
 }
 
 test("registers the detail card", () => {
@@ -134,4 +147,47 @@ test("stub config selects the first Plant Manager plant", () => {
   });
   assert.equal(stub.entity, "sensor.monstera_status");
   assert.equal(typeof registry.get("plant-manager-detail-card-editor"), "function");
+});
+
+test("draws the 24-hour history from the websocket answer", async () => {
+  const start = Date.now() / 1000 - 24 * 3600;
+  const card = new DetailCard();
+  card.setConfig({ entity: "sensor.monstera_status" });
+  card.hass = {
+    states: { "sensor.monstera_status": plant("ok", { moisture_entity: "sensor.monstera_moisture" }) },
+    callWS: () => Promise.resolve(wsHistory([
+      { state: "60", lu: start },
+      { state: "unavailable", lu: start + 3600 },
+      { state: "54", lu: start + 12 * 3600 },
+    ])),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  const html = card.shadowRoot.innerHTML;
+  assert.match(html, /Évolution sur 24 h<\/span><strong>En baisse/);
+  assert.match(html, /points="0\.0,6\.0 50\.0,28\.0 100\.0,28\.0"/);
+  assert.match(html, /54 % min\./);
+  assert.match(html, /60 % max\./);
+});
+
+test("draws a flat line when moisture did not change", async () => {
+  const card = new DetailCard();
+  card.setConfig({ entity: "sensor.monstera_status" });
+  card.hass = {
+    states: { "sensor.monstera_status": plant("too_wet", { moisture: 100, moisture_entity: "sensor.monstera_moisture" }) },
+    callWS: () => Promise.resolve(wsHistory([{ state: "100", lu: Date.now() / 1000 - 3600 }])),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.shadowRoot.innerHTML, /<strong>Stable<\/strong>/);
+  assert.match(card.shadowRoot.innerHTML, /points="0\.0,17\.0 100\.0,17\.0"/);
+});
+
+test("hides the battery section when the plant has no battery sensor", () => {
+  const withBattery = render({
+    "sensor.monstera_status": plant("ok", { battery_entity: "sensor.monstera_battery" }),
+  });
+  const withoutBattery = render({
+    "sensor.monstera_status": plant("ok", { battery_entity: null, battery: null }),
+  });
+  assert.match(withBattery, /Batterie du capteur/);
+  assert.doesNotMatch(withoutBattery, /Batterie du capteur/);
 });

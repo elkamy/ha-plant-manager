@@ -5,6 +5,10 @@ const test = require("node:test");
 
 class FakeHTMLElement {
   querySelectorAll() { return []; }
+  attachShadow() {
+    this.shadowRoot = { innerHTML: "", querySelectorAll: () => [] };
+    return this.shadowRoot;
+  }
 }
 
 const registry = new Map();
@@ -26,11 +30,19 @@ vm.runInNewContext(
 
 const PlantManagerCard = registry.get("plant-manager-card");
 
+// Shape of a history/history_during_period websocket answer: states under the
+// entity ID, with the state in "s" and timestamps in seconds.
+function wsHistory(samples, entityId = "sensor.monstera_moisture") {
+  return {
+    [entityId]: samples.map(({ state, lu }) => (lu === undefined ? { s: state } : { s: state, lu })),
+  };
+}
+
 function renderCard(states, config = {}, hassExtras = {}) {
   const card = new PlantManagerCard();
   card.setConfig(config);
   card.hass = { states, ...hassExtras };
-  return card.innerHTML;
+  return card.shadowRoot.innerHTML;
 }
 
 function plant(entityId, state, attributes = {}) {
@@ -309,11 +321,11 @@ test("renders a 24-hour moisture trend when history is enabled and available", a
         moisture_entity: "sensor.monstera_moisture",
       }),
     },
-    callWS: () => Promise.resolve([[{ state: "25" }, { state: "35" }, { state: "50" }]]),
+    callWS: () => Promise.resolve(wsHistory([{ state: "25" }, { state: "35" }, { state: "50" }])),
   };
   await new Promise((resolve) => setImmediate(resolve));
-  assert.match(card.innerHTML, /Tendance sur 24 h/);
-  assert.match(card.innerHTML, /En hausse/);
+  assert.match(card.shadowRoot.innerHTML, /Tendance sur 24 h/);
+  assert.match(card.shadowRoot.innerHTML, /En hausse/);
 });
 
 test("ignores unknown and unavailable states in moisture history", async () => {
@@ -327,16 +339,17 @@ test("ignores unknown and unavailable states in moisture history", async () => {
         moisture_entity: "sensor.monstera_moisture",
       }),
     },
-    callWS: () => Promise.resolve([[
+    callWS: () => Promise.resolve(wsHistory([
       { state: "unknown" },
       { state: "unavailable" },
       { state: "" },
       { state: "50" },
-    ]]),
+    ])),
   };
   await new Promise((resolve) => setImmediate(resolve));
-  assert.match(card.innerHTML, /Historique insuffisant pour afficher la tendance/);
-  assert.doesNotMatch(card.innerHTML, /Hausse notable détectée/);
+  // Only the "50" reading is valid: it is extended to now as a flat line.
+  assert.match(card.shadowRoot.innerHTML, /Tendance sur 24 h<\/span><span>Stable/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /Hausse notable détectée/);
 });
 
 test("shows a qualified possible-watering hint after a notable moisture rise", async () => {
@@ -350,14 +363,14 @@ test("shows a qualified possible-watering hint after a notable moisture rise", a
         moisture_entity: "sensor.monstera_moisture",
       }),
     },
-    callWS: () => Promise.resolve([[
+    callWS: () => Promise.resolve(wsHistory([
       { state: "20" },
       { state: "22" },
       { state: "46" },
-    ]]),
+    ])),
   };
   await new Promise((resolve) => setImmediate(resolve));
-  assert.match(card.innerHTML, /Hausse notable détectée : arrosage possible \(estimation\)/);
+  assert.match(card.shadowRoot.innerHTML, /Hausse notable détectée : arrosage possible \(estimation\)/);
 });
 
 test("does not infer a watering event from a small moisture increase", async () => {
@@ -371,10 +384,10 @@ test("does not infer a watering event from a small moisture increase", async () 
         moisture_entity: "sensor.monstera_moisture",
       }),
     },
-    callWS: () => Promise.resolve([[{ state: "20" }, { state: "24" }, { state: "30" }]]),
+    callWS: () => Promise.resolve(wsHistory([{ state: "20" }, { state: "24" }, { state: "30" }])),
   };
   await new Promise((resolve) => setImmediate(resolve));
-  assert.doesNotMatch(card.innerHTML, /Hausse notable détectée/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /Hausse notable détectée/);
 });
 
 test("shows contextual care advice for the current plant status", () => {
@@ -397,15 +410,15 @@ test("does not infer watering across an unavailable history sample", async () =>
         moisture_entity: "sensor.monstera_moisture",
       }),
     },
-    callWS: () => Promise.resolve([[
+    callWS: () => Promise.resolve(wsHistory([
       { state: "20" },
       { state: "unavailable" },
       { state: "45" },
-    ]]),
+    ])),
   };
   await new Promise((resolve) => setImmediate(resolve));
-  assert.match(card.innerHTML, /Tendance sur 24 h/);
-  assert.doesNotMatch(card.innerHTML, /Hausse notable détectée/);
+  assert.match(card.shadowRoot.innerHTML, /Tendance sur 24 h/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /Hausse notable détectée/);
 });
 
 
@@ -429,25 +442,77 @@ test("does not render a broken age label for an invalid sensor timestamp", () =>
 });
 
 
-test("plots moisture history using elapsed time when timestamps are available", async () => {
+test("plots moisture history using elapsed time up to now", async () => {
+  const start = Date.now() / 1000 - 24 * 3600;
   const card = new PlantManagerCard();
   card.setConfig({ show_history: true });
   card.hass = {
     states: {
-      "sensor.plant_status": plant("sensor.plant_status", "OK", {
+      "sensor.plant_status": plant("sensor.plant_status", "ok", {
         plant_name: "Monstera",
         moisture: 40,
         moisture_entity: "sensor.monstera_moisture",
       }),
     },
-    callWS: () => Promise.resolve([[
-      { state: "20", last_changed: "2026-10-01T00:00:00Z" },
-      { state: "30", last_changed: "2026-10-01T01:00:00Z" },
-      { state: "40", last_changed: "2026-10-01T10:00:00Z" },
-    ]]),
+    callWS: () => Promise.resolve(wsHistory([
+      { state: "20", lu: start },
+      { state: "30", lu: start + 6 * 3600 },
+      { state: "40", lu: start + 12 * 3600 },
+    ])),
   };
   await new Promise((resolve) => setImmediate(resolve));
-  assert.match(card.innerHTML, /points="0\.0,28\.0 10\.0,17\.0 100\.0,6\.0"/);
+  assert.match(card.shadowRoot.innerHTML, /points="0\.0,28\.0 25\.0,17\.0 50\.0,6\.0 100\.0,6\.0"/);
+});
+
+test("draws a flat line for a value unchanged over 24 hours", async () => {
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "too_wet", {
+        plant_name: "Ficus",
+        moisture: 100,
+        moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
+    callWS: () => Promise.resolve(wsHistory([{ state: "100", lu: Date.now() / 1000 - 24 * 3600 }])),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.shadowRoot.innerHTML, /points="0\.0,17\.0 100\.0,17\.0"/);
+  assert.match(card.shadowRoot.innerHTML, /Stable/);
+});
+
+test("ignores a history answer for another entity", async () => {
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "ok", {
+        plant_name: "Monstera",
+        moisture: 50,
+        moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
+    callWS: () => Promise.resolve(wsHistory([{ state: "50" }, { state: "60" }], "sensor.other")),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.shadowRoot.innerHTML, /Historique insuffisant pour afficher la tendance/);
+});
+
+test("supports Home Assistant's object syntax for tap_action", () => {
+  const html = renderCard({
+    "sensor.pachira_status": plant("sensor.pachira_status", "ok", { plant_name: "Pachira", moisture: 50 }),
+  }, { tap_action: { action: "none" } });
+  assert.match(html, /tabindex="-1"/);
+  assert.doesNotMatch(html, /<article[^>]*role="button"/);
+});
+
+test("renders into a shadow root so its styles stay scoped", () => {
+  const card = new PlantManagerCard();
+  card.setConfig({});
+  card.hass = { states: {} };
+  assert.ok(card.shadowRoot);
+  assert.match(card.shadowRoot.innerHTML, /:host \{ display: block; \}/);
 });
 
 test("re-renders only when a plant or its moisture sensor changes", () => {
