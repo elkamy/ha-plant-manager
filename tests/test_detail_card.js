@@ -60,7 +60,7 @@ test("renders moisture, thresholds, battery and care advice", () => {
 });
 
 test("does not present invalid moisture as zero", () => {
-  const html = render({ "sensor.monstera_status": plant("indisponible", { moisture: 150 }) });
+  const html = render({ "sensor.monstera_status": plant("unknown", { moisture: 150 }) });
   assert.match(html, /Indisponible/);
   assert.match(html, /aria-valuetext="Indisponible"/);
   assert.doesNotMatch(html, /aria-valuenow="100"/);
@@ -97,4 +97,41 @@ test("allows the history section to be hidden", () => {
   );
   assert.match(html, /Historique masqué dans la configuration/);
   assert.doesNotMatch(html, /Évolution sur 24 h/);
+});
+
+test("labels the plant status from the sensor state", () => {
+  const html = render({ "sensor.monstera_status": plant("needs_water", { moisture: 20 }) });
+  assert.match(html, /À arroser/);
+  assert.match(html, /Vérifiez le substrat et arrosez si nécessaire/);
+});
+
+test("accepts Home Assistant API image paths like the list card", () => {
+  const html = render({ "sensor.monstera_status": plant("ok", { image_url: "/api/image/monstera" }) });
+  assert.match(html, /src="\/api\/image\/monstera"/);
+});
+
+test("re-renders only when the plant or its moisture sensor changes", () => {
+  const card = new DetailCard();
+  card.setConfig({ entity: "sensor.monstera_status", show_history: false });
+  let renders = 0;
+  const original = card.render.bind(card);
+  card.render = () => { renders += 1; original(); };
+  const states = { "sensor.monstera_status": plant("ok", { moisture_entity: "sensor.monstera_moisture" }) };
+
+  card.hass = { states };
+  card.hass = { states: { ...states, "light.kitchen": { state: "on", attributes: {} } } };
+  assert.equal(renders, 1);
+  card.hass = { states: { ...states, "sensor.monstera_moisture": { state: "40", attributes: {} } } };
+  assert.equal(renders, 2);
+});
+
+test("stub config selects the first Plant Manager plant", () => {
+  const stub = DetailCard.getStubConfig({
+    states: {
+      "light.kitchen": { entity_id: "light.kitchen", attributes: {} },
+      "sensor.monstera_status": plant(),
+    },
+  });
+  assert.equal(stub.entity, "sensor.monstera_status");
+  assert.equal(typeof registry.get("plant-manager-detail-card-editor"), "function");
 });

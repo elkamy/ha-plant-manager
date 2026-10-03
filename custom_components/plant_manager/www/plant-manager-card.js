@@ -1,4 +1,35 @@
+const PLANT_MANAGER_STATUSES = {
+  needs_water: {
+    label: "À arroser", tone: "dry", icon: "mdi:water-alert-outline", order: 0,
+    advice: "Vérifiez le substrat et arrosez si nécessaire.",
+  },
+  too_wet: {
+    label: "Très humide", tone: "wet", icon: "mdi:water", order: 1,
+    advice: "Laissez le substrat sécher avant le prochain arrosage.",
+  },
+  ok: {
+    label: "En bonne santé", tone: "good", icon: "mdi:check-circle-outline", order: 2,
+    advice: "Rien à signaler pour le moment.",
+  },
+};
+// "unknown" (invalid reading) and "unavailable" share the neutral status.
+const PLANT_MANAGER_UNKNOWN_STATUS = {
+  label: "Indisponible", tone: "neutral", icon: "mdi:help-circle-outline", order: 3,
+  advice: "Vérifiez le capteur et sa connexion.",
+};
+const plantManagerStatus = (plant) =>
+  PLANT_MANAGER_STATUSES[String(plant?.state || "").toLowerCase()]
+  || PLANT_MANAGER_UNKNOWN_STATUS;
+
 class PlantManagerCard extends HTMLElement {
+  static getConfigElement() {
+    return document.createElement("plant-manager-card-editor");
+  }
+
+  static getStubConfig() {
+    return { title: "Mes plantes", sort_by: "status" };
+  }
+
   setConfig(config) {
     this.config = config || {};
     this.render();
@@ -6,7 +37,32 @@ class PlantManagerCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    this.render();
+    // Home Assistant sets hass on every state change in the instance: only
+    // re-render when a plant or one of its moisture sensors actually changed.
+    const tracked = this._trackedStates(hass);
+    const changed = !this._tracked
+      || tracked.length !== this._tracked.length
+      || tracked.some((state, index) => state !== this._tracked[index]);
+    this._tracked = tracked;
+    if (changed) this.render();
+  }
+
+  _trackedStates(hass) {
+    const tracked = [];
+    for (const state of Object.values(hass?.states || {})) {
+      if (state?.attributes?.plant_manager !== true) continue;
+      tracked.push(state, hass.states[state.attributes.moisture_entity]);
+    }
+    return tracked;
+  }
+
+  connectedCallback() {
+    // Keeps the "last reading" age current between sensor updates.
+    this._ageTimer = setInterval(() => this.render(), 60 * 1000);
+  }
+
+  disconnectedCallback() {
+    clearInterval(this._ageTimer);
   }
 
   getCardSize() {
@@ -22,18 +78,15 @@ class PlantManagerCard extends HTMLElement {
       ? this.config.filter_by
       : "all";
     const plants = allPlants.filter((plant) => {
-      const state = String(plant.state || "").toLocaleLowerCase("fr");
-      if (filterBy === "needs_water") return state === "à arroser";
-      if (filterBy === "attention") {
-        return state === "à arroser" || state === "très humide" || state === "indisponible";
-      }
+      const { tone } = plantManagerStatus(plant);
+      if (filterBy === "needs_water") return tone === "dry";
+      if (filterBy === "attention") return tone !== "good";
       return true;
     });
 
     const sortBy = ["name", "moisture", "status"].includes(this.config.sort_by)
       ? this.config.sort_by
       : "name";
-    const statusOrder = { "à arroser": 0, "très humide": 1, ok: 2, indisponible: 3 };
     const moistureOf = (plant) => {
       const value = plant.attributes?.moisture;
       if (value === null || value === undefined || value === "") return NaN;
@@ -51,10 +104,8 @@ class PlantManagerCard extends HTMLElement {
           return moistureA - moistureB;
         }
       } else if (sortBy === "status") {
-        const stateA = String(a.state || "").toLocaleLowerCase("fr");
-        const stateB = String(b.state || "").toLocaleLowerCase("fr");
-        const orderA = statusOrder[stateA] ?? 3;
-        const orderB = statusOrder[stateB] ?? 3;
+        const orderA = plantManagerStatus(a).order;
+        const orderB = plantManagerStatus(b).order;
         if (orderA !== orderB) return orderA - orderB;
       }
 
@@ -132,7 +183,7 @@ class PlantManagerCard extends HTMLElement {
 
     const safeImageUrl = (value) => {
       const url = String(value || "").trim();
-      if (/^https?:\/\//i.test(url) || url.startsWith("/local/") || url.startsWith("/api/")) return url;
+      if (/^https?:\/\//i.test(url) || /^\/(local|api|media)\//.test(url)) return url;
       return "";
     };
 
@@ -141,24 +192,7 @@ class PlantManagerCard extends HTMLElement {
       const hasMoisture = a.moisture !== null && a.moisture !== undefined && a.moisture !== "";
       const moisture = hasMoisture ? Number(a.moisture) : NaN;
       const valid = Number.isFinite(moisture) && moisture >= 0 && moisture <= 100;
-      const normalizedState = String(plant.state || "").toLocaleLowerCase("fr");
-      let label = "Indisponible";
-      let tone = "neutral";
-      let icon = "mdi:help-circle-outline";
-
-      if (normalizedState === "à arroser") {
-        label = "À arroser";
-        tone = "dry";
-        icon = "mdi:water-alert-outline";
-      } else if (normalizedState === "ok") {
-        label = "En bonne santé";
-        tone = "good";
-        icon = "mdi:check-circle-outline";
-      } else if (normalizedState === "très humide") {
-        label = "Très humide";
-        tone = "wet";
-        icon = "mdi:water";
-      }
+      const { label, tone, icon, advice } = plantManagerStatus(plant);
 
       const percentage = valid ? Math.max(0, Math.min(100, moisture)) : 0;
       const moistureText = valid ? `${Math.round(moisture)} %` : "Indisponible";
@@ -187,13 +221,6 @@ class PlantManagerCard extends HTMLElement {
           : `il y a ${Math.floor(ageMinutes / 1440)} j`;
         updatedText = `<div class="updated">Dernière mesure ${ageLabel}</div>`;
       }
-      const advice = normalizedState === "à arroser"
-        ? "Vérifiez le substrat et arrosez si nécessaire."
-        : normalizedState === "très humide"
-          ? "Laissez le substrat sécher avant le prochain arrosage."
-          : normalizedState === "ok"
-            ? "Rien à signaler pour le moment."
-            : "Vérifiez le capteur et sa connexion.";
       requestHistory(historyEntity);
       const historyEntry = showHistory && historyEntity ? this._historyCache.get(historyEntity) : null;
       const history = historyEntry ? historyEntry.points : null;
@@ -259,13 +286,13 @@ class PlantManagerCard extends HTMLElement {
       </article>`;
     }).join("");
 
-    const countState = (state) => plants.filter(
-      (p) => String(p.state || "").toLocaleLowerCase("fr") === state,
+    const countTone = (tone) => plants.filter(
+      (plant) => plantManagerStatus(plant).tone === tone,
     ).length;
-    const needsWater = countState("à arroser");
-    const veryWet = countState("très humide");
-    const healthy = countState("ok");
-    const unavailable = countState("indisponible");
+    const needsWater = countTone("dry");
+    const veryWet = countTone("wet");
+    const healthy = countTone("good");
+    const unavailable = countTone("neutral");
     const summary = plants.length
       ? `<div class="summary"><span class="summary-dot"></span>${plants.length} plante${plants.length > 1 ? "s" : ""} affichée${plants.length > 1 ? "s" : ""}${needsWater ? ` <span class="summary-alert">· ${needsWater} à arroser</span>` : ""}</div>`
       : "";
@@ -501,11 +528,100 @@ if (!customElements.get("plant-manager-card")) {
   customElements.define("plant-manager-card", PlantManagerCard);
 }
 
+const PLANT_MANAGER_CARD_LABELS = {
+  title: "Titre",
+  sort_by: "Tri",
+  filter_by: "Plantes affichées",
+  tap_action: "Action au toucher",
+  show_images: "Afficher les photos",
+  show_battery: "Afficher la batterie",
+  show_history: "Afficher l'historique sur 24 h",
+  compact: "Mode compact",
+};
+const PLANT_MANAGER_CARD_SCHEMA = [
+  { name: "title", selector: { text: {} } },
+  {
+    name: "sort_by",
+    selector: { select: { mode: "dropdown", options: [
+      { value: "name", label: "Nom" },
+      { value: "moisture", label: "Humidité croissante" },
+      { value: "status", label: "Statut" },
+    ] } },
+  },
+  {
+    name: "filter_by",
+    selector: { select: { mode: "dropdown", options: [
+      { value: "all", label: "Toutes" },
+      { value: "needs_water", label: "À arroser" },
+      { value: "attention", label: "Nécessitant une attention" },
+    ] } },
+  },
+  {
+    name: "tap_action",
+    selector: { select: { mode: "dropdown", options: [
+      { value: "more-info", label: "Ouvrir les détails" },
+      { value: "none", label: "Aucune" },
+    ] } },
+  },
+  {
+    type: "grid",
+    name: "",
+    schema: ["show_images", "show_battery", "show_history", "compact"]
+      .map((name) => ({ name, selector: { boolean: {} } })),
+  },
+];
+const PLANT_MANAGER_CARD_DEFAULTS = {
+  sort_by: "name",
+  filter_by: "all",
+  tap_action: "more-info",
+  show_images: true,
+  show_battery: true,
+  show_history: false,
+  compact: false,
+};
+
+class PlantManagerCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = config || {};
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  _render() {
+    if (!this._config) return;
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.computeLabel = (schema) => PLANT_MANAGER_CARD_LABELS[schema.name] || schema.name;
+      this._form.addEventListener("value-changed", (event) => {
+        this._config = event.detail.value;
+        this.dispatchEvent(new CustomEvent("config-changed", {
+          detail: { config: this._config },
+          bubbles: true,
+          composed: true,
+        }));
+      });
+      this.appendChild(this._form);
+    }
+    this._form.hass = this._hass;
+    this._form.schema = PLANT_MANAGER_CARD_SCHEMA;
+    this._form.data = { ...PLANT_MANAGER_CARD_DEFAULTS, ...this._config };
+  }
+}
+
+if (!customElements.get("plant-manager-card-editor")) {
+  customElements.define("plant-manager-card-editor", PlantManagerCardEditor);
+}
+
 window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === "plant-manager-card")) {
   window.customCards.push({
     type: "plant-manager-card",
     name: "Plant Manager",
-    description: "Affiche les plantes avec leur humidité, leur statut et leur batterie."
+    description: "Affiche les plantes avec leur humidité, leur statut et leur batterie.",
+    preview: true,
   });
 }

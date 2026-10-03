@@ -54,7 +54,7 @@ test("renders an empty state when no plants are configured", () => {
 
 test("shows unavailable moisture as unavailable, not zero percent", () => {
   const html = renderCard({
-    "sensor.pachira_status": plant("sensor.pachira_status", "indisponible", {
+    "sensor.pachira_status": plant("sensor.pachira_status", "unknown", {
       moisture: null,
     }),
   });
@@ -66,7 +66,7 @@ test("shows unavailable moisture as unavailable, not zero percent", () => {
 
 test("renders valid moisture and watering summary", () => {
   const html = renderCard({
-    "sensor.pachira_status": plant("sensor.pachira_status", "à arroser", {
+    "sensor.pachira_status": plant("sensor.pachira_status", "needs_water", {
       moisture: 22.6,
       battery: "18",
     }),
@@ -139,11 +139,11 @@ test("supports sorting plants by moisture with unavailable values last", () => {
       plant_name: "Monstera",
       moisture: 55,
     }),
-    "sensor.pachira_status": plant("sensor.pachira_status", "à arroser", {
+    "sensor.pachira_status": plant("sensor.pachira_status", "needs_water", {
       plant_name: "Pachira",
       moisture: 22,
     }),
-    "sensor.ficus_status": plant("sensor.ficus_status", "indisponible", {
+    "sensor.ficus_status": plant("sensor.ficus_status", "unknown", {
       plant_name: "Ficus",
       moisture: null,
     }),
@@ -155,7 +155,7 @@ test("supports sorting plants by moisture with unavailable values last", () => {
 
 test("sorts out-of-range moisture values with unavailable readings", () => {
   const html = renderCard({
-    "sensor.invalid": plant("sensor.invalid", "indisponible", {
+    "sensor.invalid": plant("sensor.invalid", "unknown", {
       plant_name: "Ficus",
       moisture: 150,
     }),
@@ -176,7 +176,7 @@ test("supports sorting by plant status and hiding images and battery", () => {
       battery: 18,
       image_url: "https://example.com/monstera.jpg",
     }),
-    "sensor.pachira_status": plant("sensor.pachira_status", "à arroser", {
+    "sensor.pachira_status": plant("sensor.pachira_status", "needs_water", {
       plant_name: "Pachira",
       moisture: 22,
       battery: 80,
@@ -196,7 +196,7 @@ test("filters plants that need watering", () => {
       plant_name: "Monstera",
       moisture: 55,
     }),
-    "sensor.pachira_status": plant("sensor.pachira_status", "à arroser", {
+    "sensor.pachira_status": plant("sensor.pachira_status", "needs_water", {
       plant_name: "Pachira",
       moisture: 22,
     }),
@@ -209,9 +209,9 @@ test("filters plants that need watering", () => {
 
 test("attention filter includes dry, very wet and unavailable plants", () => {
   const html = renderCard({
-    "sensor.dry": plant("sensor.dry", "à arroser", { plant_name: "Pachira", moisture: 20 }),
-    "sensor.wet": plant("sensor.wet", "très humide", { plant_name: "Fougère", moisture: 90 }),
-    "sensor.unavailable": plant("sensor.unavailable", "indisponible", { plant_name: "Ficus", moisture: null }),
+    "sensor.dry": plant("sensor.dry", "needs_water", { plant_name: "Pachira", moisture: 20 }),
+    "sensor.wet": plant("sensor.wet", "too_wet", { plant_name: "Fougère", moisture: 90 }),
+    "sensor.unavailable": plant("sensor.unavailable", "unknown", { plant_name: "Ficus", moisture: null }),
     "sensor.ok": plant("sensor.ok", "OK", { plant_name: "Monstera", moisture: 50 }),
   }, { filter_by: "attention" });
 
@@ -271,10 +271,10 @@ test("makes plant rows keyboard-accessible and supports disabling tap actions", 
 
 test("shows a status overview for the plants currently displayed", () => {
   const html = renderCard({
-    "sensor.dry": plant("sensor.dry", "à arroser", { plant_name: "Pachira", moisture: 20 }),
-    "sensor.wet": plant("sensor.wet", "très humide", { plant_name: "Fougère", moisture: 90 }),
+    "sensor.dry": plant("sensor.dry", "needs_water", { plant_name: "Pachira", moisture: 20 }),
+    "sensor.wet": plant("sensor.wet", "too_wet", { plant_name: "Fougère", moisture: 90 }),
     "sensor.ok": plant("sensor.ok", "OK", { plant_name: "Monstera", moisture: 50 }),
-    "sensor.unavailable": plant("sensor.unavailable", "indisponible", { plant_name: "Ficus", moisture: null }),
+    "sensor.unavailable": plant("sensor.unavailable", "unknown", { plant_name: "Ficus", moisture: null }),
   });
 
   assert.match(html, /aria-label="Résumé des plantes"/);
@@ -286,7 +286,7 @@ test("shows a status overview for the plants currently displayed", () => {
 
 test("does not display out-of-range moisture as a valid progress value", () => {
   const html = renderCard({
-    "sensor.invalid": plant("sensor.invalid", "indisponible", {
+    "sensor.invalid": plant("sensor.invalid", "unknown", {
       plant_name: "Ficus",
       moisture: 150,
     }),
@@ -379,7 +379,7 @@ test("does not infer a watering event from a small moisture increase", async () 
 
 test("shows contextual care advice for the current plant status", () => {
   const html = renderCard({
-    "sensor.dry": plant("sensor.dry", "à arroser", { plant_name: "Pachira", moisture: 20 }),
+    "sensor.dry": plant("sensor.dry", "needs_water", { plant_name: "Pachira", moisture: 20 }),
   });
   assert.match(html, /Vérifiez le substrat et arrosez si nécessaire/);
   assert.match(html, /mdi:lightbulb-outline/);
@@ -448,4 +448,55 @@ test("plots moisture history using elapsed time when timestamps are available", 
   };
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(card.innerHTML, /points="0\.0,28\.0 10\.0,17\.0 100\.0,6\.0"/);
+});
+
+test("re-renders only when a plant or its moisture sensor changes", () => {
+  const card = new PlantManagerCard();
+  card.setConfig({});
+  let renders = 0;
+  const render = card.render.bind(card);
+  card.render = () => { renders += 1; render(); };
+  const pachira = plant("sensor.pachira_status", "ok", {
+    plant_name: "Pachira", moisture: 50, moisture_entity: "sensor.pachira_moisture",
+  });
+  const moisture = { entity_id: "sensor.pachira_moisture", state: "50", attributes: {} };
+  const states = { "sensor.pachira_status": pachira, "sensor.pachira_moisture": moisture };
+
+  card.hass = { states };
+  card.hass = { states: { ...states, "light.kitchen": { state: "on", attributes: {} } } };
+  assert.equal(renders, 1);
+
+  card.hass = { states: { ...states, "sensor.pachira_moisture": { ...moisture, state: "49" } } };
+  assert.equal(renders, 2);
+  card.hass = { states: { ...states, "sensor.ficus_status": plant("sensor.ficus_status", "ok") } };
+  assert.equal(renders, 3);
+});
+
+test("treats unavailable and unknown statuses as needing attention", () => {
+  const html = renderCard({
+    "sensor.a": plant("sensor.a", "unavailable", { plant_name: "Ficus" }),
+    "sensor.b": plant("sensor.b", "unknown", { plant_name: "Pothos" }),
+    "sensor.c": plant("sensor.c", "ok", { plant_name: "Monstera", moisture: 50 }),
+  }, { filter_by: "attention" });
+  assert.match(html, /Ficus/);
+  assert.match(html, /Pothos/);
+  assert.doesNotMatch(html, /Monstera/);
+});
+
+test("accepts Home Assistant local, API and media image paths", () => {
+  for (const url of ["/local/a.jpg", "/api/image/b", "/media/local/c.jpg"]) {
+    const html = renderCard({
+      "sensor.a": plant("sensor.a", "ok", { moisture: 50, image_url: url }),
+    });
+    assert.match(html, new RegExp(`src="${url}"`));
+  }
+});
+
+test("provides a stub config and a visual editor for the card picker", () => {
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(PlantManagerCard.getStubConfig())),
+    { title: "Mes plantes", sort_by: "status" },
+  );
+  assert.equal(typeof registry.get("plant-manager-card-editor"), "function");
+  assert.equal(windowStub.customCards[0].preview, true);
 });

@@ -1,4 +1,24 @@
+const PLANT_MANAGER_DETAIL_STATUSES = {
+  needs_water: ["À arroser", "dry", "mdi:water-alert-outline", "Vérifiez le substrat et arrosez si nécessaire."],
+  too_wet: ["Très humide", "wet", "mdi:water", "Laissez le substrat sécher avant le prochain arrosage."],
+  ok: ["En bonne santé", "good", "mdi:check-circle-outline", "Rien à signaler pour le moment."],
+};
+// "unknown" (invalid reading) and "unavailable" share the neutral status.
+const PLANT_MANAGER_DETAIL_UNKNOWN = [
+  "Indisponible", "neutral", "mdi:help-circle-outline", "Vérifiez le capteur et sa connexion.",
+];
+
 class PlantManagerDetailCard extends HTMLElement {
+  static getConfigElement() {
+    return document.createElement("plant-manager-detail-card-editor");
+  }
+
+  static getStubConfig(hass) {
+    const plant = Object.values(hass?.states || {})
+      .find((state) => state?.attributes?.plant_manager === true);
+    return { entity: plant ? plant.entity_id : "", show_history: true };
+  }
+
   setConfig(config) {
     if (!config?.entity || typeof config.entity !== "string") {
       throw new Error("Veuillez définir l'entité de statut Plant Manager dans « entity ».");
@@ -9,7 +29,23 @@ class PlantManagerDetailCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    this.render();
+    // Home Assistant sets hass on every state change in the instance: only
+    // re-render when this plant or its moisture sensor actually changed.
+    const plant = hass?.states?.[this.config?.entity];
+    const tracked = [plant, hass?.states?.[plant?.attributes?.moisture_entity]];
+    const changed = !this._tracked
+      || tracked.some((state, index) => state !== this._tracked[index]);
+    this._tracked = tracked;
+    if (changed) this.render();
+  }
+
+  connectedCallback() {
+    // Keeps the "last reading" age current between sensor updates.
+    this._ageTimer = setInterval(() => this.render(), 60 * 1000);
+  }
+
+  disconnectedCallback() {
+    clearInterval(this._ageTimer);
   }
 
   getCardSize() {
@@ -38,16 +74,11 @@ class PlantManagerDetailCard extends HTMLElement {
     const low = Number(a.low_threshold);
     const high = Number(a.high_threshold);
     const batteryThreshold = Number(a.battery_low_threshold);
-    const status = String(plant.state || "indisponible").toLocaleLowerCase("fr");
-    const statusMap = {
-      "à arroser": ["À arroser", "dry", "mdi:water-alert-outline"],
-      "très humide": ["Très humide", "wet", "mdi:water"],
-      "ok": ["En bonne santé", "good", "mdi:check-circle-outline"],
-      "indisponible": ["Indisponible", "neutral", "mdi:help-circle-outline"],
-    };
-    const [statusLabel, tone, statusIcon] = statusMap[status] || statusMap.indisponible;
+    const [statusLabel, tone, statusIcon, advice] = PLANT_MANAGER_DETAIL_STATUSES[
+      String(plant.state || "").toLowerCase()
+    ] || PLANT_MANAGER_DETAIL_UNKNOWN;
     const imageUrl = String(a.image_url || "").trim();
-    const safeImage = /^https?:\/\//i.test(imageUrl) || imageUrl.startsWith("/local/")
+    const safeImage = /^https?:\/\//i.test(imageUrl) || /^\/(local|api|media)\//.test(imageUrl)
       ? imageUrl : "";
     const moistureEntity = a.moisture_entity;
     const moistureSource = moistureEntity ? this._hass.states[moistureEntity] : null;
@@ -127,12 +158,6 @@ class PlantManagerDetailCard extends HTMLElement {
     const moistureText = moistureValid ? `${Math.round(moisture)} %` : "Indisponible";
     const batteryText = batteryValid ? `${Math.round(battery)} %` : "Indisponible";
     const batteryLow = batteryValid && Number.isFinite(batteryThreshold) && battery < batteryThreshold;
-    const advice = status === "à arroser"
-      ? "Vérifiez le substrat et arrosez si nécessaire."
-      : status === "très humide"
-        ? "Laissez le substrat sécher avant le prochain arrosage."
-        : status === "ok" ? "Rien à signaler pour le moment."
-          : "Vérifiez le capteur et sa connexion.";
     this.innerHTML = `
       <ha-card>
         <header>
@@ -202,11 +227,63 @@ class PlantManagerDetailCard extends HTMLElement {
 if (!customElements.get("plant-manager-detail-card")) {
   customElements.define("plant-manager-detail-card", PlantManagerDetailCard);
 }
+const PLANT_MANAGER_DETAIL_LABELS = {
+  entity: "Plante",
+  title: "Titre (facultatif)",
+  show_history: "Afficher l'historique sur 24 h",
+};
+const PLANT_MANAGER_DETAIL_SCHEMA = [
+  {
+    name: "entity",
+    required: true,
+    selector: { entity: { filter: { integration: "plant_manager", domain: "sensor" } } },
+  },
+  { name: "title", selector: { text: {} } },
+  { name: "show_history", selector: { boolean: {} } },
+];
+
+class PlantManagerDetailCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = config || {};
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  _render() {
+    if (!this._config) return;
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.computeLabel = (schema) => PLANT_MANAGER_DETAIL_LABELS[schema.name] || schema.name;
+      this._form.addEventListener("value-changed", (event) => {
+        this._config = event.detail.value;
+        this.dispatchEvent(new CustomEvent("config-changed", {
+          detail: { config: this._config },
+          bubbles: true,
+          composed: true,
+        }));
+      });
+      this.appendChild(this._form);
+    }
+    this._form.hass = this._hass;
+    this._form.schema = PLANT_MANAGER_DETAIL_SCHEMA;
+    this._form.data = { show_history: true, ...this._config };
+  }
+}
+
+if (!customElements.get("plant-manager-detail-card-editor")) {
+  customElements.define("plant-manager-detail-card-editor", PlantManagerDetailCardEditor);
+}
+
 window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === "plant-manager-detail-card")) {
   window.customCards.push({
     type: "plant-manager-detail-card",
     name: "Plant Manager — Fiche plante",
-    description: "Affiche les détails, seuils, batterie et l'historique d'une plante."
+    description: "Affiche les détails, seuils, batterie et l'historique d'une plante.",
+    preview: true,
   });
 }
