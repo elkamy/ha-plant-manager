@@ -32,7 +32,8 @@ Expliquez le besoin concret, le comportement attendu et, si possible, un exemple
 python -m compileall -q custom_components/plant_manager tests
 python -m unittest discover -s tests -v
 node --check custom_components/plant_manager/www/plant-manager-card.js
-node --test tests/test_card.js
+node --check custom_components/plant_manager/www/plant-manager-detail-card.js
+node --test tests/test_card.js tests/test_detail_card.js
 python -m json.tool custom_components/plant_manager/manifest.json > /dev/null
 python -m json.tool hacs.json > /dev/null
 ```
