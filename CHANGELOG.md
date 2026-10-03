@@ -1,5 +1,17 @@
 # Journal des modifications
 
+## [1.2.0] — 2026-10-03
+
+### Ajouté
+- Espèce de la plante, à l'ajout ou dans les options : recherche sur Wikipedia (sans compte), avec photo et description dans la langue de Home Assistant.
+- Compte OpenPlantbook facultatif, commun à toutes les plantes, pour récupérer les seuils d'humidité de l'espèce choisie.
+- Envoi de sa propre photo depuis les options de la plante.
+- Les photos sont stockées dans `config/plant_manager/images/` et servies par l'intégration, sans accès à Internet à l'affichage ; elles sont supprimées avec la plante.
+- La fiche détaillée affiche l'espèce sous le nom de la plante.
+
+### Modifié
+- Les options d'une plante s'ouvrent sur un menu : « Seuils et notifications », « Espèce et photo » et « Compte OpenPlantbook ».
+
 ## [1.1.1] — 2026-10-03
 
 ### Corrigé

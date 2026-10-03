@@ -43,6 +43,8 @@ Plant Manager est une intégration personnalisée Home Assistant pour gérer des
 - Carte Lovelace avec tri par nom, humidité ou statut ; filtres par état ; résumé visuel et mode compact.
 - Fiche détaillée par plante.
 - Éditeur visuel pour les deux cartes.
+- Espèce de la plante avec photo et description récupérées automatiquement (Wikipedia), et seuils d'humidité par espèce avec un compte OpenPlantbook facultatif.
+- Envoi de votre propre photo depuis l'interface.
 - Conseils d'entretien contextuels et indication de l'ancienneté de la dernière mesure.
 - Historique d'humidité sur 24 heures et tendance optionnels.
 - Vérifications des valeurs invalides ou indisponibles pour éviter les alertes et affichages trompeurs.
@@ -93,6 +95,17 @@ Ces valeurs sont des points de départ : chaque sonde mesure différemment, ajus
 
 Les seuils d'humidité sont génériques : adaptez-les aux besoins de chaque plante et aux caractéristiques de son capteur.
 
+## Espèce et photo
+
+Indiquez l'espèce lors de l'ajout de la plante, ou plus tard dans **Options → Espèce et photo** : saisissez un nom (« Ficus elastica », « Monstera », « Kentia »…), puis choisissez l'espèce parmi les résultats.
+
+- **Wikipedia** (sans compte) fournit le nom, une courte description et une photo, dans la langue de Home Assistant.
+- **OpenPlantbook** (facultatif) fournit en plus les seuils d'humidité de l'espèce. Créez un compte gratuit sur [open.plantbook.io](https://open.plantbook.io/), générez vos identifiants d'API, puis saisissez-les une seule fois dans **Options → Compte OpenPlantbook** d'une plante : ils servent pour toutes les plantes. Lors du choix d'une espèce OpenPlantbook, une case permet d'appliquer ou non ses seuils.
+
+Les photos (celle de l'espèce ou la vôtre, envoyée depuis **Espèce et photo**) sont copiées dans `config/plant_manager/images/` et servies par l'intégration : les cartes n'ont besoin d'aucun accès à Internet pour les afficher. Une photo que vous envoyez est conservée même si vous changez d'espèce, et la photo d'une plante est supprimée avec la plante.
+
+Les seuils d'OpenPlantbook supposent une sonde de type Mi Flora : selon votre capteur, ajustez-les ensuite dans **Seuils et notifications**.
+
 ## Capteur de statut
 
 Chaque plante crée une entité `sensor.<plante>_statut` (ou `sensor.<plante>_status` si Home Assistant est en anglais) de type énumération.
@@ -116,6 +129,7 @@ Attributs disponibles pour vos automatisations et modèles :
 | `low_threshold`, `high_threshold` | Seuils d'humidité configurés. |
 | `battery_low_threshold`, `battery_reset_threshold` | Seuil d'alerte batterie et seuil de réarmement. |
 | `image_url` | Image configurée pour la plante. |
+| `species`, `species_description` | Espèce choisie et sa description, ou `null`. |
 | `plant_manager` | Toujours `true` ; permet aux cartes de retrouver les plantes. |
 
 Exemple de déclencheur d'automatisation :
@@ -189,7 +203,7 @@ show_history: true
 
 ### Images
 
-`image_url` (dans les options de la plante) accepte une URL `http(s)://` ou un chemin Home Assistant commençant par `/local/`, `/api/` ou `/media/`. Pour une image stockée dans `config/www/plantes/monstera.jpg`, utilisez `/local/plantes/monstera.jpg`.
+Le plus simple est d'utiliser **Options → Espèce et photo** (voir [Espèce et photo](#espèce-et-photo)). Le champ `image_url` des **Seuils et notifications** accepte aussi une URL `http(s)://` ou un chemin Home Assistant commençant par `/local/`, `/api/`, `/media/` ou `/plant_manager/images/`. Pour une image stockée dans `config/www/plantes/monstera.jpg`, utilisez `/local/plantes/monstera.jpg`.
 
 ## Mise à jour depuis une version 0.2.x
 
