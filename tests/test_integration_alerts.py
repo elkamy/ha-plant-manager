@@ -1,5 +1,6 @@
 """Integration-level tests for delayed plant alert callbacks using HA test doubles."""
 
+import copy
 import importlib.util
 import sys
 import types
@@ -51,6 +52,8 @@ class FakeHass:
         self.state_change_callbacks = {}
         self.delayed_callbacks = []
         self.cancelled_delayed = []
+        # Content of the persisted alert store, shared across restarts in tests.
+        self.stored_alerts = None
 
     def add_state_listener(self, entity_ids, callback):
         for entity_id in entity_ids:
@@ -77,6 +80,25 @@ class FakeHass:
         await self.delayed_callbacks[index](None)
 
 
+class FakeStore:
+    def __init__(self, hass, version, key):
+        self.hass = hass
+
+    async def async_load(self):
+        return copy.deepcopy(self.hass.stored_alerts)
+
+    def async_delay_save(self, data_func, delay):
+        self.hass.stored_alerts = copy.deepcopy(data_func())
+
+
+def restarted(hass):
+    """Return a fresh Home Assistant double keeping the persisted alert store."""
+    new_hass = FakeHass()
+    new_hass.stored_alerts = copy.deepcopy(hass.stored_alerts)
+    new_hass.states.values = dict(hass.states.values)
+    return new_hass
+
+
 def load_integration_with_home_assistant_doubles():
     """Load the integration while replacing only its Home Assistant APIs."""
     homeassistant = types.ModuleType("homeassistant")
@@ -99,6 +121,8 @@ def load_integration_with_home_assistant_doubles():
     event.async_call_later = lambda hass, delay, callback: hass.schedule(
         delay, callback
     )
+    storage = types.ModuleType("homeassistant.helpers.storage")
+    storage.Store = FakeStore
 
     sys.modules.update(
         {
@@ -108,6 +132,7 @@ def load_integration_with_home_assistant_doubles():
             "homeassistant.helpers": helpers,
             "homeassistant.helpers.config_validation": config_validation,
             "homeassistant.helpers.event": event,
+            "homeassistant.helpers.storage": storage,
         }
     )
 
@@ -324,6 +349,89 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
 
         callback(types.SimpleNamespace(data={"old_state": FakeState(31), "new_state": FakeState(25)}))
         self.assertEqual(hass.delayed_callbacks, [])
+
+    async def test_plant_already_dry_at_startup_is_notified(self):
+        hass = FakeHass()
+        hass.states.values["sensor.pachira_soil_moisture"] = FakeState(20)
+        entry = self.make_entry()
+        await INTEGRATION.async_setup_entry(hass, entry)
+
+        self.assertEqual(len(hass.delayed_callbacks), 1)
+        await hass.fire_delayed()
+        hass.services.async_call.assert_awaited_once()
+
+    async def test_restart_does_not_repeat_an_alert_already_sent(self):
+        hass = FakeHass()
+        hass.states.values["sensor.pachira_soil_moisture"] = FakeState(20)
+        await INTEGRATION.async_setup_entry(hass, self.make_entry())
+        await hass.fire_delayed()
+
+        restarted_hass = restarted(hass)
+        await INTEGRATION.async_setup_entry(restarted_hass, self.make_entry())
+        callback = restarted_hass.state_change_callbacks["sensor.pachira_soil_moisture"]
+        callback(types.SimpleNamespace(data={"old_state": None, "new_state": FakeState(19)}))
+
+        self.assertEqual(restarted_hass.delayed_callbacks, [])
+
+    async def test_recovery_during_downtime_rearms_the_alert(self):
+        hass = FakeHass()
+        hass.states.values["sensor.pachira_soil_moisture"] = FakeState(20)
+        await INTEGRATION.async_setup_entry(hass, self.make_entry())
+        await hass.fire_delayed()
+
+        hass.states.values["sensor.pachira_soil_moisture"] = FakeState(60)
+        restarted_hass = restarted(hass)
+        await INTEGRATION.async_setup_entry(restarted_hass, self.make_entry())
+        callback = restarted_hass.state_change_callbacks["sensor.pachira_soil_moisture"]
+        callback(types.SimpleNamespace(data={"old_state": FakeState(60), "new_state": FakeState(20)}))
+
+        self.assertEqual(len(restarted_hass.delayed_callbacks), 1)
+
+    async def test_enabling_notifications_on_a_dry_plant_schedules_an_alert(self):
+        hass = FakeHass()
+        hass.states.values["sensor.pachira_soil_moisture"] = FakeState(20)
+        entry = self.make_entry()
+        entry.options = {**entry.options, "notifications_enabled": False}
+        await INTEGRATION.async_setup_entry(hass, entry)
+        self.assertEqual(hass.delayed_callbacks, [])
+
+        # Changing options reloads the entry, which sets it up again.
+        reloaded = restarted(hass)
+        entry = self.make_entry()
+        await INTEGRATION.async_setup_entry(reloaded, entry)
+        self.assertEqual(len(reloaded.delayed_callbacks), 1)
+
+    async def test_failing_notify_target_does_not_block_the_others(self):
+        hass = FakeHass()
+        hass.services.async_call.side_effect = [RuntimeError("service missing"), None]
+        entry = self.make_entry()
+        entry.options = {
+            **entry.options,
+            "notify_service": ["notify.old_phone"],
+            "notify_entities": ["notify.tablet"],
+        }
+        await INTEGRATION.async_setup_entry(hass, entry)
+        hass.states.values["sensor.pachira_soil_moisture"] = FakeState(25)
+        callback = hass.state_change_callbacks["sensor.pachira_soil_moisture"]
+        callback(types.SimpleNamespace(data={"old_state": FakeState(31), "new_state": FakeState(25)}))
+
+        with self.assertLogs(INTEGRATION._LOGGER, level="WARNING"):
+            await hass.fire_delayed()
+        self.assertEqual(hass.services.async_call.await_count, 2)
+        self.assertEqual(
+            hass.services.async_call.await_args.args[:2], ("notify", "send_message")
+        )
+
+    async def test_removing_a_plant_forgets_its_alert_state(self):
+        hass = FakeHass()
+        hass.states.values["sensor.pachira_soil_moisture"] = FakeState(20)
+        entry = self.make_entry()
+        await INTEGRATION.async_setup_entry(hass, entry)
+        await hass.fire_delayed()
+        self.assertIn(entry.entry_id, hass.stored_alerts)
+
+        await INTEGRATION.async_remove_entry(hass, entry)
+        self.assertNotIn(entry.entry_id, hass.stored_alerts)
 
     async def test_pending_battery_alert_is_cancelled_on_unload(self):
         hass, entry = await self.setup_integration(with_battery=True)

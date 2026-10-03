@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from homeassistant.helpers.event import (
     async_call_later,
     async_track_state_change_event,
 )
+from homeassistant.helpers.storage import Store
 
 from .alerts import (
     normalize_notify_entities,
@@ -31,6 +33,10 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["sensor"]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
+ALERT_STORE_KEY = f"{DOMAIN}.alerts"
+ALERT_STORE_VERSION = 1
+_ALERT_STORE = "_alert_store"
+
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Register the Lovelace card and serve its JavaScript from this integration."""
@@ -48,13 +54,30 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     ])
     # Bump the query version when changing card JavaScript to invalidate caches.
     for _filename, url in cards:
-        add_extra_js_url(hass, f"{url}?v=1.0.0")
+        add_extra_js_url(hass, f"{url}?v=1.0.1")
     hass.data.setdefault(DOMAIN, {})
     return True
 
 
+async def _async_alert_store(hass: HomeAssistant) -> tuple[Store, dict]:
+    """Return the store remembering which alert episodes were already notified."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if _ALERT_STORE not in domain_data:
+        # Entries set up concurrently share one load through this future.
+        loaded = asyncio.get_running_loop().create_future()
+        domain_data[_ALERT_STORE] = loaded
+        store = Store(hass, ALERT_STORE_VERSION, ALERT_STORE_KEY)
+        try:
+            data = await store.async_load() or {}
+        except Exception:  # noqa: BLE001 - a corrupt file must not block setup
+            _LOGGER.warning("Plant Manager: could not load alert state", exc_info=True)
+            data = {}
+        loaded.set_result((store, data))
+    return await domain_data[_ALERT_STORE]
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    hass.data.setdefault(DOMAIN, {})
+    store, store_data = await _async_alert_store(hass)
     entry_data = {}
     for kind in ("moisture", "battery"):
         entry_data.update({
@@ -77,11 +100,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.async_on_unload(_cancel_pending_alerts)
 
+    notified = store_data.setdefault(entry.entry_id, {})
+
+    @callback
+    def _remember_notified(kind: str, value: bool) -> None:
+        # Persisted so a restart or reload neither repeats nor loses an alert.
+        if notified.get(kind, False) != value:
+            notified[kind] = value
+            store.async_delay_save(lambda: store_data, 1)
+
     plant_name = entry.data.get(CONF_PLANT_NAME, entry.title)
     _track_alert(
         hass,
         entry,
         entry_data,
+        notified,
+        _remember_notified,
         kind="moisture",
         entity_id=entry.data[CONF_MOISTURE_ENTITY],
         threshold_key=CONF_LOW_THRESHOLD,
@@ -99,6 +133,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass,
             entry,
             entry_data,
+            notified,
+            _remember_notified,
             kind="battery",
             entity_id=battery_entity,
             threshold_key=CONF_BATTERY_LOW_THRESHOLD,
@@ -131,27 +167,35 @@ async def _send_notifications(
     hass: HomeAssistant, entry: ConfigEntry, title: str, message: str
 ) -> None:
     services, entities = _notify_targets(entry)
-    for service in services:
-        domain, service_name = service.split(".", 1)
-        await hass.services.async_call(
-            domain,
-            service_name,
-            {"title": title, "message": message},
-            blocking=False,
-        )
+    calls = [
+        (*service.split(".", 1), {"title": title, "message": message})
+        for service in services
+    ]
     if entities:
-        await hass.services.async_call(
+        calls.append((
             "notify",
             "send_message",
             {"entity_id": entities, "title": title, "message": message},
-            blocking=False,
-        )
+        ))
+    for domain, service, data in calls:
+        try:
+            await hass.services.async_call(domain, service, data, blocking=False)
+        except Exception:  # noqa: BLE001 - one failing target must not block the others
+            _LOGGER.warning(
+                "Plant Manager: could not send the notification for %s with %s.%s",
+                entry.title,
+                domain,
+                service,
+                exc_info=True,
+            )
 
 
 def _track_alert(
     hass: HomeAssistant,
     entry: ConfigEntry,
     entry_data: dict,
+    notified: dict,
+    remember_notified,
     *,
     kind: str,
     entity_id: str,
@@ -165,22 +209,19 @@ def _track_alert(
     pending_key = f"{kind}_alert_pending"
     generation_key = f"{kind}_alert_generation"
     cancel_key = f"{kind}_alert_cancel"
+    entry_data[active_key] = notified.get(kind, False)
 
     def _threshold() -> float:
         return parse_percentage(
             entry.options.get(threshold_key, default_threshold), default_threshold
         )
 
+    def _set_active(value: bool) -> None:
+        entry_data[active_key] = value
+        remember_notified(kind, value)
+
     @callback
-    def _handle_change(event):
-        new_state = event.data.get("new_state")
-        if new_state is None:
-            return
-        current = parse_reading(new_state.state)
-        if current is None:
-            return
-        old_state = event.data.get("old_state")
-        previous = parse_reading(old_state.state) if old_state is not None else None
+    def _process(current: float, previous: float | None) -> None:
         threshold = _threshold()
 
         if current >= threshold and entry_data[pending_key]:
@@ -197,7 +238,7 @@ def _track_alert(
             # A new episode can alert only after the value recovers.
             if current < min(threshold + rearm_offset, 100):
                 return
-            entry_data[active_key] = False
+            _set_active(False)
 
         if not should_start_alert(
             current,
@@ -236,15 +277,34 @@ def _track_alert(
                 return
 
             # Mark the episode before sending to prevent duplicate alerts.
-            entry_data[active_key] = True
+            _set_active(True)
             title, message = build_message(value)
             await _send_notifications(hass, entry, title, message)
 
         entry_data[cancel_key] = async_call_later(hass, delay * 60, _send)
 
+    @callback
+    def _handle_change(event):
+        new_state = event.data.get("new_state")
+        if new_state is None:
+            return
+        current = parse_reading(new_state.state)
+        if current is None:
+            return
+        old_state = event.data.get("old_state")
+        previous = parse_reading(old_state.state) if old_state is not None else None
+        _process(current, previous)
+
     unsubscribe = async_track_state_change_event(hass, [entity_id], _handle_change)
     entry_data[f"unsubscribe_{kind}"] = unsubscribe
     entry.async_on_unload(unsubscribe)
+
+    # A plant already dry at startup, after a reload (options change) or once
+    # notifications are enabled starts an episode without waiting for a change.
+    state = hass.states.get(entity_id)
+    current = parse_reading(state.state) if state is not None else None
+    if current is not None:
+        _process(current, None)
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -255,3 +315,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    store, store_data = await _async_alert_store(hass)
+    if store_data.pop(entry.entry_id, None) is not None:
+        store.async_delay_save(lambda: store_data, 1)

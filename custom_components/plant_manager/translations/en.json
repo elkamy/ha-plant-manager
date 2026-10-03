@@ -21,7 +21,8 @@
       }
     },
     "error": {
-      "moisture_already_used": "This moisture sensor is already assigned to another plant."
+      "moisture_already_used": "This moisture sensor is already assigned to another plant.",
+      "name_required": "Enter a plant name."
     },
     "abort": {
       "already_configured": "This moisture sensor is already assigned to a plant.",

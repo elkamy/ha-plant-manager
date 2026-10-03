@@ -22,6 +22,26 @@ SENSOR_SELECTOR = selector.EntitySelector(
 )
 
 
+PERCENTAGE_SELECTOR = selector.NumberSelector(
+    selector.NumberSelectorConfig(
+        min=0,
+        max=100,
+        step=1,
+        unit_of_measurement="%",
+        mode=selector.NumberSelectorMode.SLIDER,
+    )
+)
+DELAY_SELECTOR = selector.NumberSelector(
+    selector.NumberSelectorConfig(
+        min=0,
+        max=1440,
+        step=1,
+        unit_of_measurement="min",
+        mode=selector.NumberSelectorMode.BOX,
+    )
+)
+
+
 def _sensor_fields(defaults: dict) -> dict:
     battery = defaults.get(CONF_BATTERY_ENTITY)
     return {
@@ -41,22 +61,27 @@ class PlantManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
+        errors = {}
         if user_input is not None:
-            await self.async_set_unique_id(user_input[CONF_MOISTURE_ENTITY])
-            self._abort_if_unique_id_configured()
-            return self.async_create_entry(
-                title=user_input[CONF_PLANT_NAME].strip(),
-                data={
-                    **user_input,
-                    CONF_PLANT_NAME: user_input[CONF_PLANT_NAME].strip(),
-                },
-            )
+            plant_name = user_input[CONF_PLANT_NAME].strip()
+            if not plant_name:
+                errors[CONF_PLANT_NAME] = "name_required"
+            else:
+                await self.async_set_unique_id(user_input[CONF_MOISTURE_ENTITY])
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(
+                    title=plant_name,
+                    data={**user_input, CONF_PLANT_NAME: plant_name},
+                )
 
+        defaults = user_input or {}
         schema = vol.Schema({
-            vol.Required(CONF_PLANT_NAME): str,
-            **_sensor_fields({}),
+            vol.Required(
+                CONF_PLANT_NAME, default=defaults.get(CONF_PLANT_NAME, vol.UNDEFINED)
+            ): str,
+            **_sensor_fields(defaults),
         })
-        return self.async_show_form(step_id="user", data_schema=schema)
+        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
     async def async_step_reconfigure(self, user_input=None):
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
@@ -100,7 +125,11 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
             if user_input[CONF_HIGH_THRESHOLD] <= user_input[CONF_LOW_THRESHOLD]:
                 errors["base"] = "invalid_thresholds"
             else:
-                return self.async_create_entry(title="", data=user_input)
+                # The number selector returns floats; the delay is whole minutes.
+                return self.async_create_entry(
+                    title="",
+                    data={**user_input, CONF_DELAY: int(user_input[CONF_DELAY])},
+                )
 
         services = [
             {
@@ -129,19 +158,19 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
                 default=self.config_entry.options.get(
                     CONF_LOW_THRESHOLD, DEFAULT_LOW_THRESHOLD
                 ),
-            ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+            ): PERCENTAGE_SELECTOR,
             vol.Required(
                 CONF_HIGH_THRESHOLD,
                 default=self.config_entry.options.get(
                     CONF_HIGH_THRESHOLD, DEFAULT_HIGH_THRESHOLD
                 ),
-            ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+            ): PERCENTAGE_SELECTOR,
             vol.Required(
                 CONF_BATTERY_LOW_THRESHOLD,
                 default=self.config_entry.options.get(
                     CONF_BATTERY_LOW_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD
                 ),
-            ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+            ): PERCENTAGE_SELECTOR,
             vol.Optional(
                 CONF_NOTIFY_SERVICE,
                 default=configured_services,
@@ -161,7 +190,7 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
             vol.Required(
                 CONF_DELAY,
                 default=self.config_entry.options.get(CONF_DELAY, DEFAULT_DELAY),
-            ): vol.All(vol.Coerce(int), vol.Range(min=0, max=1440)),
+            ): DELAY_SELECTOR,
             vol.Optional(
                 CONF_IMAGE_URL,
                 default=self.config_entry.options.get(CONF_IMAGE_URL, ""),

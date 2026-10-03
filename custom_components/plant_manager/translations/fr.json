@@ -21,7 +21,8 @@
       }
     },
     "error": {
-      "moisture_already_used": "Ce capteur d'humidité est déjà associé à une autre plante."
+      "moisture_already_used": "Ce capteur d'humidité est déjà associé à une autre plante.",
+      "name_required": "Saisissez un nom de plante."
     },
     "abort": {
       "already_configured": "Ce capteur d'humidité est déjà associé à une plante.",
