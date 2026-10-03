@@ -117,7 +117,8 @@ Exécuter les tests localement :
 python -m compileall -q custom_components/plant_manager tests
 python -m unittest discover -s tests -v
 node --check custom_components/plant_manager/www/plant-manager-card.js
-node --test tests/test_card.js
+node --check custom_components/plant_manager/www/plant-manager-detail-card.js
+node --test tests/test_card.js tests/test_detail_card.js
 ```
 
 La CI vérifie également les métadonnées JSON, HACS et Hassfest.
