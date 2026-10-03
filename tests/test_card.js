@@ -565,3 +565,49 @@ test("provides a stub config and a visual editor for the card picker", () => {
   assert.equal(typeof registry.get("plant-manager-card-editor"), "function");
   assert.equal(windowStub.customCards[0].preview, true);
 });
+
+test("ignores a lone sensor glitch in the history", async () => {
+  // Real case: a soil sensor reported 100 → 20 → 100 % within a second.
+  const start = Date.now() / 1000 - 24 * 3600;
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "too_wet", {
+        plant_name: "Ficus",
+        moisture: 100,
+        moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
+    callWS: () => Promise.resolve(wsHistory([
+      { state: "100", lu: start },
+      { state: "20", lu: start + 14 * 3600 },
+      { state: "100", lu: start + 14 * 3600 + 1 },
+    ])),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /Hausse notable détectée/);
+  assert.match(card.shadowRoot.innerHTML, /points="0\.0,17\.0 58\.3,17\.0 100\.0,17\.0"/);
+});
+
+test("keeps a real watering, which is not a lone glitch", async () => {
+  const start = Date.now() / 1000 - 24 * 3600;
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "ok", {
+        plant_name: "Monstera",
+        moisture: 60,
+        moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
+    callWS: () => Promise.resolve(wsHistory([
+      { state: "25", lu: start },
+      { state: "60", lu: start + 3600 },
+      { state: "58", lu: start + 7200 },
+    ])),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.shadowRoot.innerHTML, /Hausse notable détectée : arrosage possible/);
+});

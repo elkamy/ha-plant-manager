@@ -23,6 +23,22 @@ const plantManagerDetailHistorySamples = (result, entityId) =>
     };
   });
 
+// A lone reading far from both neighbours, which agree with each other, is a
+// sensor glitch (e.g. 100 → 20 → 100 %): it is neither plotted nor taken for
+// a watering.
+const plantManagerDetailWithoutSpikes = (samples) => {
+  const valid = samples
+    .map((sample, index) => ({ value: sample.value, index }))
+    .filter((sample) => Number.isFinite(sample.value));
+  const spikes = new Set();
+  for (let k = 1; k < valid.length - 1; k += 1) {
+    const [previous, current, next] = [valid[k - 1].value, valid[k].value, valid[k + 1].value];
+    if (Math.abs(previous - next) < 5 && Math.abs(current - previous) >= 15
+      && Math.abs(current - next) >= 15) spikes.add(valid[k].index);
+  }
+  return samples.map((sample, index) => (spikes.has(index) ? { ...sample, value: NaN } : sample));
+};
+
 class PlantManagerDetailCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("plant-manager-detail-card-editor");
@@ -128,7 +144,7 @@ class PlantManagerDetailCard extends HTMLElement {
         minimal_response: false,
         no_attributes: true,
       }).then((result) => {
-        const valid = plantManagerDetailHistorySamples(result, moistureEntity)
+        const valid = plantManagerDetailWithoutSpikes(plantManagerDetailHistorySamples(result, moistureEntity))
           .filter((sample) => Number.isFinite(sample.value));
         // The last reading still holds now: extend it so the line spans the
         // period, and a value unchanged for 24 h draws a flat line.

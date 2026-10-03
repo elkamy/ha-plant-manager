@@ -191,3 +191,20 @@ test("hides the battery section when the plant has no battery sensor", () => {
   assert.match(withBattery, /Batterie du capteur/);
   assert.doesNotMatch(withoutBattery, /Batterie du capteur/);
 });
+
+test("does not plot a lone sensor glitch", async () => {
+  const start = Date.now() / 1000 - 24 * 3600;
+  const card = new DetailCard();
+  card.setConfig({ entity: "sensor.monstera_status" });
+  card.hass = {
+    states: { "sensor.monstera_status": plant("too_wet", { moisture: 100, moisture_entity: "sensor.monstera_moisture" }) },
+    callWS: () => Promise.resolve(wsHistory([
+      { state: "100", lu: start },
+      { state: "20", lu: start + 14 * 3600 },
+      { state: "100", lu: start + 14 * 3600 + 1 },
+    ])),
+  };
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.shadowRoot.innerHTML, /100 % min\./);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /20 % min\./);
+});

@@ -32,6 +32,22 @@ const plantManagerHistorySamples = (result, entityId) =>
     };
   });
 
+// A lone reading far from both neighbours, which agree with each other, is a
+// sensor glitch (e.g. 100 → 20 → 100 %): it is neither plotted nor taken for
+// a watering.
+const plantManagerWithoutSpikes = (samples) => {
+  const valid = samples
+    .map((sample, index) => ({ value: sample.value, index }))
+    .filter((sample) => Number.isFinite(sample.value));
+  const spikes = new Set();
+  for (let k = 1; k < valid.length - 1; k += 1) {
+    const [previous, current, next] = [valid[k - 1].value, valid[k].value, valid[k + 1].value];
+    if (Math.abs(previous - next) < 5 && Math.abs(current - previous) >= 15
+      && Math.abs(current - next) >= 15) spikes.add(valid[k].index);
+  }
+  return samples.map((sample, index) => (spikes.has(index) ? { ...sample, value: NaN } : sample));
+};
+
 const plantManagerStatus = (plant) =>
   PLANT_MANAGER_STATUSES[String(plant?.state || "").toLowerCase()]
   || PLANT_MANAGER_UNKNOWN_STATUS;
@@ -160,7 +176,7 @@ class PlantManagerCard extends HTMLElement {
         minimal_response: false,
         no_attributes: true,
       }).then((result) => {
-        const samples = plantManagerHistorySamples(result, entityId);
+        const samples = plantManagerWithoutSpikes(plantManagerHistorySamples(result, entityId));
         // Keep invalid samples in the sequence while detecting a rise: an
         // unknown/unavailable reading must break continuity, not create a
         // false jump between two measurements several hours apart.
