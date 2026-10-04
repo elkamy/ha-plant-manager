@@ -13,13 +13,18 @@
     </linearGradient>
   </defs>
   <rect id="pm-tile" width="256" height="256" rx="56" fill="url(#pm-bg)"/>
-  <g id="pm-plant" transform="translate(26 27) scale(.73)" fill="url(#pm-leaf)" stroke="#d8f7cb" stroke-width="2">
-    <path d="M112 212C18 176 4 96 18 24c74 12 132 65 94 188Z"/>
-    <path d="M113 214C91 128 111 55 180 12c35 70 10 145-67 202Z"/>
-    <path d="M109 214C162 154 224 147 280 171c-35 65-94 83-171 43Z"/>
-    <path d="M111 214C58 196 35 158 40 117c53 13 78 47 71 97Z"/>
-    <path d="M110 215L42 64M111 214L177 53M112 215L250 183" fill="none" stroke="#e7ffe0" stroke-width="4" stroke-linecap="round"/>
-    <path d="M62 224h100l-12 45H74Z" fill="#e7f2e8" stroke="#e7f2e8"/>
-    <path d="M71 238h82" fill="none" stroke="#4b8a68" stroke-width="4" stroke-linecap="round"/>
+  <g id="pm-plant" transform="translate(11.7 -16.6) scale(.858)" fill="url(#pm-leaf)" stroke="#d8f7cb" stroke-width="2">
+    <!-- Leaves scaled down around their base, pot scaled up around its rim. -->
+    <g transform="translate(111 214) scale(.8) translate(-111 -214)">
+      <path d="M112 212C18 176 4 96 18 24c74 12 132 65 94 188Z"/>
+      <path d="M113 214C91 128 111 55 180 12c35 70 10 145-67 202Z"/>
+      <path d="M109 214C162 154 224 147 280 171c-35 65-94 83-171 43Z"/>
+      <path d="M111 214C58 196 35 158 40 117c53 13 78 47 71 97Z"/>
+      <path d="M110 215L42 64M111 214L177 53M112 215L250 183" fill="none" stroke="#e7ffe0" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(112 224) scale(1.35) translate(-112 -224)">
+      <path d="M62 224h100l-12 45H74Z" fill="#e7f2e8" stroke="#e7f2e8"/>
+      <path d="M71 238h82" fill="none" stroke="#4b8a68" stroke-width="4" stroke-linecap="round"/>
+    </g>
   </g>
 </svg>
