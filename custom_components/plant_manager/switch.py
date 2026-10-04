@@ -4,7 +4,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED
+from .const import CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED, signal_updated
 from .sensor import plant_device_info
 
 
@@ -25,6 +25,13 @@ class NotificationsSwitch(SwitchEntity):
         self.entry = entry
         self._attr_unique_id = f"{entry.entry_id}_notifications"
         self._attr_device_info = plant_device_info(entry)
+
+    async def async_added_to_hass(self) -> None:
+        from homeassistant.helpers.dispatcher import async_dispatcher_send
+
+        # The status sensor, set up first, could not find this switch yet: make
+        # it publish its attributes again so the cards' bell knows the switch.
+        async_dispatcher_send(self.hass, signal_updated(self.entry.entry_id))
 
     @property
     def is_on(self) -> bool:
