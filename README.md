@@ -25,9 +25,9 @@
 Plant Manager est une intégration personnalisée Home Assistant pour gérer des plantes d'intérieur à partir de capteurs d'humidité du sol et, facultativement, de capteurs de batterie. Elle crée un capteur de statut par plante et fournit deux cartes Lovelace dédiées.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/elkamy/ha-plant-manager/main/docs/screenshots/plant-manager-card.png" alt="Carte Plant Manager listant trois plantes avec leur humidité, leur batterie et leur tendance sur 24 h" width="320">
+  <img src="https://raw.githubusercontent.com/elkamy/ha-plant-manager/main/docs/screenshots/plant-manager-card.png" alt="Carte Plant Manager en mode compact listant huit plantes avec leur statut, leur humidité, leur batterie, leur température et la cloche des notifications" width="320">
   &nbsp;&nbsp;
-  <img src="https://raw.githubusercontent.com/elkamy/ha-plant-manager/main/docs/screenshots/plant-manager-detail-card.png" alt="Fiche détaillée d'une plante avec humidité, seuils, courbe sur 24 h et batterie" width="320">
+  <img src="https://raw.githubusercontent.com/elkamy/ha-plant-manager/main/docs/screenshots/plant-manager-detail-card.png" alt="Fiche détaillée d'une plante avec son espèce, la cloche des notifications, l'humidité, les seuils, la courbe sur 3 jours, la température et la batterie" width="320">
 </p>
 
 ## Fonctionnalités
@@ -183,7 +183,7 @@ Les deux cartes apparaissent dans le sélecteur de cartes (**Ajouter une carte �
 
 ### Liste des plantes
 
-<img src="https://raw.githubusercontent.com/elkamy/ha-plant-manager/main/docs/screenshots/plant-manager-card.png" alt="Carte Plant Manager listant trois plantes avec leur statut, leur humidité, leur batterie et leur tendance sur 24 h" width="360">
+<img src="https://raw.githubusercontent.com/elkamy/ha-plant-manager/main/docs/screenshots/plant-manager-card.png" alt="Carte Plant Manager en mode compact listant huit plantes avec leur statut, leur humidité, leur batterie, leur température et la cloche des notifications" width="360">
 
 ```yaml
 type: custom:plant-manager-card
@@ -223,7 +223,7 @@ La carte peut signaler une hausse d'humidité d'au moins 15 points comme **arros
 
 Affiche une plante individuellement, avec son humidité, les seuils configurés, l'état de la batterie, l'ancienneté de la dernière mesure et la tendance sur 24 h.
 
-<img src="https://raw.githubusercontent.com/elkamy/ha-plant-manager/main/docs/screenshots/plant-manager-detail-card.png" alt="Fiche détaillée d'une plante avec humidité, seuils, courbe sur 24 h et batterie" width="360">
+<img src="https://raw.githubusercontent.com/elkamy/ha-plant-manager/main/docs/screenshots/plant-manager-detail-card.png" alt="Fiche détaillée d'une plante avec son espèce, la cloche des notifications, l'humidité, les seuils, la courbe sur 3 jours, la température et la batterie" width="360">
 
 ```yaml
 type: custom:plant-manager-detail-card
