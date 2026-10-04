@@ -1,23 +1,6 @@
 # Journal des modifications
 
-## [1.5.0] — non publié
-
-### Ajouté
-- Diagnostics téléchargeables pour chaque plante (état des alertes, mesures suivies, vitesse de dessèchement), sans les destinataires de notification.
-
-### Maintenance
-- L'état de chaque plante est conservé dans `entry.runtime_data`, comme le recommande Home Assistant.
-- Nouveaux tests exécutés dans un vrai Home Assistant (`tests_ha/`, avec `pytest-homeassistant-custom-component`) pour les flux de création, d'options et de reconfiguration, les entités et les notifications, et job CI correspondant.
-
-## [1.4.0] — non publié
-
-### Ajouté
-- Option `history_days` (1, 3 ou 7 jours) pour l'historique des deux cartes ; les historiques longs sont moyennés avant d'être tracés.
-- La fiche détaillée trace les seuils d'arrosage et de sol très humide en pointillés sur la courbe.
-- Les cartes et leur éditeur s'affichent en anglais lorsque l'interface de Home Assistant n'est pas en français.
-- Largeur par défaut dans les tableaux de bord en sections : pleine largeur pour la liste, demi-largeur pour la fiche.
-
-## [1.3.0] — non publié
+## [1.5.0] — 2026-10-04
 
 ### Ajouté
 - Suivi de l'arrosage : entité « Dernier arrosage », détecté automatiquement par une hausse d'humidité confirmée (les pics isolés du capteur sont ignorés), et entité « Prochain arrosage », estimée d'après la vitesse de dessèchement.
@@ -26,6 +9,15 @@
 - Rappel facultatif tant que la plante reste sèche et qu'aucun arrosage n'a été détecté.
 - Heures calmes : les notifications qui tomberaient dans la plage attendent sa fin.
 - Les cartes affichent le dernier arrosage et le prochain arrosage estimé.
+- Option `history_days` (1, 3 ou 7 jours) pour l'historique des deux cartes ; les historiques longs sont moyennés avant d'être tracés.
+- La fiche détaillée trace les seuils d'arrosage et de sol très humide en pointillés sur la courbe.
+- Les cartes et leur éditeur s'affichent en anglais lorsque l'interface de Home Assistant n'est pas en français.
+- Largeur par défaut dans les tableaux de bord en sections : pleine largeur pour la liste, demi-largeur pour la fiche.
+- Diagnostics téléchargeables pour chaque plante (état des alertes, mesures suivies, vitesse de dessèchement), sans les destinataires de notification.
+
+### Maintenance
+- L'état de chaque plante est conservé dans `entry.runtime_data`, comme le recommande Home Assistant.
+- Nouveaux tests exécutés dans un vrai Home Assistant (`tests_ha/`, avec `pytest-homeassistant-custom-component`) pour les flux de création, d'options et de reconfiguration, les entités et les notifications, et job CI correspondant.
 
 ## [1.2.2] — 2026-10-03
 
