@@ -1,9 +1,13 @@
 # Journal des modifications
 
-## Non publié
+## [1.6.1] — 2026-10-04
 
 ### Modifié
-- Identité visuelle unifiée autour de l'emblème du bandeau (plante en pot sur fond vert sombre) : icône de l'intégration régénérée en PNG net à partir d'une source SVG unique (`docs/brand/plant-manager-icon.svg`), bandeau du README mis à jour (température, espèces, langues) et emblème dans l'en-tête de la carte liste.
+- Identité visuelle unifiée autour d'un seul emblème : la plante du bandeau, avec un vrai pot à rebord, des nervures qui suivent chaque feuille et une goutte d'eau, sur une tuile vert sombre lisible en thème clair comme sombre.
+- L'icône de l'intégration est régénérée en PNG net (256 et 512 px) à partir d'une source SVG unique (`docs/brand/plant-manager-icon.svg`) ; le bandeau du README et l'en-tête de la carte liste utilisent le même emblème.
+- Le bandeau du README mentionne la température, les espèces et les deux langues.
+
+> L'icône s'affiche dans Paramètres → Intégrations ; le tableau de bord HACS montre encore « icon not available » tant que HACS ne lit pas les icônes fournies par les intégrations (hacs/integration#5171).
 
 ## [1.6.0] — 2026-10-04
 
