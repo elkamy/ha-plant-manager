@@ -2,6 +2,8 @@
 
 ## [1.6.0] — 2026-10-04
 
+> Après la mise à jour, redémarrez Home Assistant puis forcez le rechargement de l'interface (**Ctrl+Maj+R**, ou **Réinitialiser le cache du frontend** dans l'application mobile) : sans cela, les nouveaux champs des options peuvent s'afficher sous leur nom technique (`min_temperature`…) et les cartes rester dans leur ancienne version.
+
 ### Ajouté
 - Suivi de la température : capteur proposé automatiquement à l'ajout (même sonde), associé automatiquement aux plantes existantes, modifiable avec Reconfigurer.
 - Températures conseillées par type de plante ou par espèce (OpenPlantbook `min_temp` et `max_temp`), réglables dans les options.
