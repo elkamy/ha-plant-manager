@@ -11,6 +11,10 @@
       <stop offset="0" stop-color="#e7f2e8"/>
       <stop offset="1" stop-color="#cfe3d4"/>
     </linearGradient>
+    <linearGradient id="pm-drop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7fd3f7"/>
+      <stop offset="1" stop-color="#2e8fd8"/>
+    </linearGradient>
     <linearGradient id="pm-leaf" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#b9f2a1"/>
       <stop offset="1" stop-color="#55b879"/>
@@ -32,5 +36,10 @@
       <path d="M61 233H163L162 241H62Z" fill="#a9cbb2" opacity=".55"/>
       <rect x="50" y="212" width="124" height="22" rx="7" fill="#f4faf4"/>
     </g>
+  </g>
+  <!-- A water drop: the plant's soil moisture. -->
+  <g id="pm-drop-mark" transform="translate(198 62)">
+    <path d="M0-30C11-14 20-4 20 8A20 20 0 0 1-20 8C-20-4-11-14 0-30Z" fill="url(#pm-drop)" stroke="#d6f1fd" stroke-width="2"/>
+    <ellipse cx="-7" cy="6" rx="4.5" ry="7" fill="#ffffff" opacity=".6"/>
   </g>
 </svg>
