@@ -22,13 +22,17 @@
   </defs>
   <rect id="pm-tile" width="256" height="256" rx="56" fill="url(#pm-bg)"/>
   <g id="pm-plant" transform="translate(20.3 -15.9) scale(.795)" fill="url(#pm-leaf)" stroke="#d8f7cb" stroke-width="2">
-    <!-- Leaves scaled down around their base. -->
+    <!-- Leaves scaled down around their base; each midrib follows its leaf's
+         centre line and is drawn right after it, so front leaves cover it. -->
     <g transform="translate(111 214) scale(.8) translate(-111 -214)">
       <path d="M112 212C18 176 4 96 18 24c74 12 132 65 94 188Z"/>
+      <path d="M112.0 212.0C87.9 143.6 57.9 84.9 30.9 43.0" fill="none" stroke="#e7ffe0" stroke-width="3.5" stroke-linecap="round" opacity=".9"/>
       <path d="M113 214C91 128 111 55 180 12c35 70 10 145-67 202Z"/>
+      <path d="M113.0 214.0C136.7 152.5 156.6 89.2 172.5 36.7" fill="none" stroke="#e7ffe0" stroke-width="3.5" stroke-linecap="round" opacity=".9"/>
       <path d="M109 214C162 154 224 147 280 171c-35 65-94 83-171 43Z"/>
+      <path d="M109.0 214.0C164.9 205.4 217.5 195.0 260.0 179.2" fill="none" stroke="#e7ffe0" stroke-width="3.5" stroke-linecap="round" opacity=".9"/>
       <path d="M111 214C58 196 35 158 40 117c53 13 78 47 71 97Z"/>
-      <path d="M110 215L42 64M111 214L177 53M112 215L250 183" fill="none" stroke="#e7ffe0" stroke-width="4" stroke-linecap="round"/>
+      <path d="M111.0 214.0C91.2 184.8 70.7 154.0 50.1 128.8" fill="none" stroke="#e7ffe0" stroke-width="3.5" stroke-linecap="round" opacity=".9"/>
     </g>
     <!-- A flowerpot: a lip wider than the body, and a body tapering down. -->
     <g stroke="none">
@@ -37,10 +41,9 @@
       <rect x="50" y="212" width="124" height="22" rx="7" fill="#f4faf4"/>
     </g>
   </g>
-  <!-- A water drop sliding down the pot: the plant's soil moisture. -->
+  <!-- A water drop on the pot: the plant's soil moisture. -->
   <g id="pm-drop-mark">
-    <path d="M128 173C127 179 127 185 128 191" fill="none" stroke="#7fd3f7" stroke-width="5" stroke-linecap="round" opacity=".55"/>
-    <g transform="translate(128 206)">
+    <g transform="translate(109.3 204)">
       <path d="M0-20C7.5-9.5 13.5-2.5 13.5 5.5A13.5 13.5 0 0 1-13.5 5.5C-13.5-2.5-7.5-9.5 0-20Z" fill="url(#pm-drop)"/>
       <ellipse cx="-4.5" cy="4" rx="3" ry="4.8" fill="#ffffff" opacity=".6"/>
     </g>
