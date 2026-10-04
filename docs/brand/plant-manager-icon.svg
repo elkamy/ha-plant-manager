@@ -43,7 +43,7 @@
   </g>
   <!-- A water drop on the pot: the plant's soil moisture. -->
   <g id="pm-drop-mark">
-    <g transform="translate(109.3 204)">
+    <g transform="translate(92 190)">
       <path d="M0-20C7.5-9.5 13.5-2.5 13.5 5.5A13.5 13.5 0 0 1-13.5 5.5C-13.5-2.5-7.5-9.5 0-20Z" fill="url(#pm-drop)"/>
       <ellipse cx="-4.5" cy="4" rx="3" ry="4.8" fill="#ffffff" opacity=".6"/>
     </g>
