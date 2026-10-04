@@ -39,6 +39,7 @@ Plant Manager est une intégration personnalisée Home Assistant pour gérer des
 - Alertes d'arrosage avec seuil configurable, délai et anti-répétition pendant un épisode de sol sec.
 - Alertes de batterie faible avec seuil configurable et réarmement après récupération.
 - Suivi de l'arrosage : date du dernier arrosage détectée automatiquement et estimation du prochain.
+- Suivi de la température de la sonde, avec seuils par type de plante ou par espèce (OpenPlantbook) et alertes « trop froid » ou « trop chaud ».
 - Notifications actionnables sur l'application mobile (« C'est arrosé », « Rappeler dans 2 h »), rappels tant que la plante reste sèche et heures calmes.
 - Notifications vers les services `notify.*` et vers les entités de notification.
 - Activation/désactivation des notifications indépendamment pour chaque plante.
@@ -95,6 +96,7 @@ Ces valeurs sont des points de départ : chaque sonde mesure différemment, ajus
 - **Notifications activées** : désactive les alertes de cette plante sans modifier les autres plantes.
 - **Rappel** : renvoie l'alerte d'arrosage toutes les N heures tant que la plante reste sèche et qu'aucun arrosage n'a été détecté (0 = jamais).
 - **Heures calmes** : une notification qui tomberait entre le début et la fin (par exemple 22:00 → 07:00) attend la fin de la plage.
+- **Températures conseillées et alertes de température** (si un capteur de température est associé) : une alerte « trop froid » ou « trop chaud » par épisode, réarmée quand la température revient à 1 °C à l'intérieur de la plage. Désactivable séparément des alertes d'arrosage.
 - Les capteurs de batterie doivent fournir un pourcentage de 0 à 100. Les états non numériques, indisponibles et hors plage sont ignorés.
 
 Les seuils d'humidité sont génériques : adaptez-les aux besoins de chaque plante et aux caractéristiques de son capteur.
@@ -112,7 +114,7 @@ Les seuils d'OpenPlantbook supposent une sonde de type Mi Flora : selon votre ca
 
 ## Suivi de l'arrosage
 
-Chaque plante dispose de trois entités supplémentaires :
+Chaque plante dispose de trois entités supplémentaires (Home Assistant peut préfixer leur identifiant par la pièce, par exemple `sensor.salon_kentia_dernier_arrosage`) :
 
 | Entité | Rôle |
 | --- | --- |
@@ -121,6 +123,14 @@ Chaque plante dispose de trois entités supplémentaires :
 | **Marquer comme arrosée** (`button.<plante>_marquer_comme_arrosee`) | Enregistre un arrosage que la sonde n'a pas vu et arrête les rappels. |
 
 Sur l'application mobile Home Assistant (services `notify.mobile_app_…`), l'alerte d'arrosage propose deux boutons : **C'est arrosé** (même effet que le bouton ci-dessus) et **Rappeler dans 2 h**. Les autres destinataires reçoivent la notification sans boutons.
+
+## Température
+
+La plupart des sondes d'humidité du sol mesurent aussi la température. Son capteur est proposé automatiquement à l'ajout d'une plante (même appareil que la sonde), modifiable avec **Reconfigurer**, et associé automatiquement aux plantes existantes lors de la mise à jour vers la 1.6.
+
+Les températures conseillées viennent du type de plante (par exemple 15–30 °C en standard, 18–30 °C pour une plante tropicale, 10–35 °C pour les cactus), ou de l'espèce lorsqu'elle est choisie dans OpenPlantbook, et se règlent dans **Seuils et notifications**. Les cartes affichent la température en bleu quand il fait trop froid et en rouge quand il fait trop chaud ; le conseil d'entretien en tient compte lorsque l'arrosage ne pose pas de problème.
+
+Si vous choisissez par erreur le capteur d'humidité **de l'air** d'une sonde qui mesure aussi l'humidité **du sol**, l'ajout de la plante le signale et propose le bon capteur.
 
 ## Capteur de statut
 
@@ -147,6 +157,9 @@ Attributs disponibles pour vos automatisations et modèles :
 | `image_url` | Image configurée pour la plante. |
 | `species`, `species_description` | Espèce choisie et sa description, ou `null`. |
 | `last_watered`, `next_watering` | Dernier arrosage et prochain arrosage estimé (ISO 8601), ou `null`. |
+| `temperature`, `temperature_entity` | Température validée (°C) et capteur utilisé, ou `null`. |
+| `min_temperature`, `max_temperature` | Températures conseillées. |
+| `temperature_status` | `too_cold`, `ok`, `too_hot`, ou `null` sans mesure. |
 | `plant_manager` | Toujours `true` ; permet aux cartes de retrouver les plantes. |
 
 Exemple de déclencheur d'automatisation :
@@ -183,6 +196,7 @@ show_battery: true
 | `filter_by` | `all`, `needs_water`, `attention` | `all` | Affiche toutes les plantes, celles à arroser ou celles qui nécessitent une attention. |
 | `show_images` | `true`, `false` | `true` | Affiche ou masque les photos personnalisées. |
 | `show_battery` | `true`, `false` | `true` | Affiche ou masque les indicateurs de batterie. |
+| `show_temperature` | `true`, `false` | `true` | Affiche ou masque la température. |
 | `show_history` | `true`, `false` | `false` | Affiche la courbe et la tendance d'humidité. |
 | `history_days` | `1`, `3`, `7` | `1` | Durée de l'historique affiché, en jours. |
 | `compact` | `true`, `false` | `false` | Réduit les marges et l'espacement vertical. |

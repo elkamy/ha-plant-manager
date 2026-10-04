@@ -16,10 +16,10 @@ _NAME_SUFFIXES = (
 )
 
 
-def suggest_battery_entity(
-    moisture_entity_id: str, entities: Iterable[Mapping]
+def suggest_sibling_entity(
+    moisture_entity_id: str, entities: Iterable[Mapping], device_class: str
 ) -> str | None:
-    """Return the battery sensor of the moisture sensor's device, if any.
+    """Return a sensor of the given class on the moisture sensor's device, if any.
 
     Each entity is a mapping with entity_id, device_id, device_class and disabled.
     """
@@ -36,10 +36,30 @@ def suggest_battery_entity(
         if e["device_id"] == device_id
         and e["entity_id"] != moisture_entity_id
         and e["entity_id"].startswith("sensor.")
-        and e["device_class"] == "battery"
+        and e["device_class"] == device_class
         and not e["disabled"]
     )
     return candidates[0] if candidates else None
+
+
+def suggest_battery_entity(moisture_entity_id: str, entities: Iterable[Mapping]) -> str | None:
+    return suggest_sibling_entity(moisture_entity_id, entities, "battery")
+
+
+def suggest_temperature_entity(moisture_entity_id: str, entities: Iterable[Mapping]) -> str | None:
+    return suggest_sibling_entity(moisture_entity_id, entities, "temperature")
+
+
+def soil_sensor_instead(selected_entity_id: str, entities: Iterable[Mapping]) -> str | None:
+    """The soil moisture sensor to use when an air humidity sensor was picked.
+
+    Soil sensors often also measure the air humidity, in the same unit (%).
+    """
+    entities = list(entities)
+    selected = next((e for e in entities if e["entity_id"] == selected_entity_id), None)
+    if selected is None or selected["device_class"] != "humidity":
+        return None
+    return suggest_sibling_entity(selected_entity_id, entities, "moisture")
 
 
 def _without_prefix(name: str) -> str:

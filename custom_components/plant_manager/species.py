@@ -62,6 +62,8 @@ class SpeciesDetails:
     # (low, high) moisture thresholds, only known from OpenPlantbook.
     thresholds: tuple[float, float] | None = None
     pid: str | None = None
+    # (min, max) temperatures in °C, only known from OpenPlantbook.
+    temperatures: tuple[float, float] | None = None
 
 
 def parse_match_value(value: str) -> tuple[str, str, str]:
@@ -158,12 +160,22 @@ def _percentage(value) -> float | None:
     return number if 0 <= number <= 100 else None
 
 
+def _temperature(value) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if -40 <= number <= 70 else None
+
+
 def parse_plantbook_detail(data) -> SpeciesDetails:
     if not isinstance(data, dict) or not data.get("pid"):
         raise SpeciesError("Unexpected OpenPlantbook detail")
     low = _percentage(data.get("min_soil_moist"))
     high = _percentage(data.get("max_soil_moist"))
     image = data.get("image_url")
+    min_temp = _temperature(data.get("min_temp"))
+    max_temp = _temperature(data.get("max_temp"))
     return SpeciesDetails(
         source=SOURCE_PLANTBOOK,
         name=str(data.get("display_pid") or data["pid"]),
@@ -171,6 +183,11 @@ def parse_plantbook_detail(data) -> SpeciesDetails:
         image_url=image if isinstance(image, str) and image.startswith("https://") else None,
         thresholds=(low, high) if low is not None and high is not None and low < high else None,
         pid=str(data["pid"]),
+        temperatures=(
+            (min_temp, max_temp)
+            if min_temp is not None and max_temp is not None and min_temp < max_temp
+            else None
+        ),
     )
 
 

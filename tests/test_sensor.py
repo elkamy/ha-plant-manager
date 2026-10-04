@@ -251,6 +251,35 @@ class WateringSensorTests(unittest.TestCase):
                 self.assertIn("name", entity["button"]["watered"])
 
 
+class TemperatureAttributeTests(unittest.TestCase):
+    def sensor(self, temperature, options=None):
+        entry = FakeEntry(50, options)
+        entry.data["temperature_entity"] = "sensor.plant_temperature"
+        if temperature is not None:
+            entry.hass.states.values["sensor.plant_temperature"] = FakeState(temperature)
+        return PlantStatusSensor(entry.hass, entry)
+
+    def test_temperature_status_against_the_thresholds(self):
+        for value, status in (("14.9", "too_cold"), ("15", "ok"), ("30", "ok"), ("30.5", "too_hot")):
+            with self.subTest(value=value):
+                attributes = self.sensor(value).extra_state_attributes
+                self.assertEqual(attributes["temperature_status"], status)
+                self.assertEqual(attributes["temperature"], float(value))
+
+    def test_custom_thresholds_and_missing_reading(self):
+        attributes = self.sensor("19", {"min_temperature": 20, "max_temperature": 28}).extra_state_attributes
+        self.assertEqual(attributes["temperature_status"], "too_cold")
+        self.assertEqual((attributes["min_temperature"], attributes["max_temperature"]), (20.0, 28.0))
+        attributes = self.sensor("unavailable").extra_state_attributes
+        self.assertIsNone(attributes["temperature"])
+        self.assertIsNone(attributes["temperature_status"])
+
+    def test_no_temperature_without_sensor(self):
+        attributes = PlantStatusSensor(FakeEntry(50).hass, FakeEntry(50)).extra_state_attributes
+        self.assertIsNone(attributes["temperature_entity"])
+        self.assertIsNone(attributes["temperature_status"])
+
+
 class TranslationTests(unittest.TestCase):
     def load(self, language):
         import json

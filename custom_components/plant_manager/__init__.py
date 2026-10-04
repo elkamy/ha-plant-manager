@@ -23,8 +23,10 @@ from .alerts import (
     parse_delay_minutes,
     parse_percentage,
     parse_reading,
+    parse_temperature,
+    parse_temperature_threshold,
     seconds_until_allowed,
-    should_start_alert,
+    should_start_episode,
 )
 from .const import (
     DOMAIN, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY, CONF_LOW_THRESHOLD,
@@ -34,6 +36,9 @@ from .const import (
     DEFAULT_NOTIFICATIONS_ENABLED, DEFAULT_LOW_THRESHOLD,
     DEFAULT_BATTERY_LOW_THRESHOLD, DEFAULT_DELAY, DEFAULT_REMINDER_HOURS,
     ACTION_SNOOZE, ACTION_WATERED, SNOOZE_HOURS, signal_updated,
+    CONF_TEMPERATURE_ENTITY, CONF_MIN_TEMPERATURE, CONF_MAX_TEMPERATURE,
+    CONF_TEMPERATURE_ALERTS, DEFAULT_MIN_TEMPERATURE, DEFAULT_MAX_TEMPERATURE,
+    DEFAULT_TEMPERATURE_ALERTS,
 )
 from .watering import WateringTracker
 
@@ -41,6 +46,7 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["sensor", "button"]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
+ALERT_KINDS = ("moisture", "battery", "cold", "hot")
 ALERT_STORE_KEY = f"{DOMAIN}.alerts"
 WATERING_STORE_KEY = f"{DOMAIN}.watering"
 STORE_VERSION = 1
@@ -72,7 +78,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     ])
     # Bump the query version when changing card JavaScript to invalidate caches.
     for _filename, url in cards:
-        add_extra_js_url(hass, f"{url}?v=1.5.0")
+        add_extra_js_url(hass, f"{url}?v=1.6.0")
     hass.data.setdefault(DOMAIN, {})
     return True
 
@@ -104,9 +110,15 @@ def _state_time(state) -> float:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     alert_store, alert_data = await _async_store(hass, ALERT_STORE_KEY)
     watering_store, watering_data = await _async_store(hass, WATERING_STORE_KEY)
-    tracker = WateringTracker.from_dict(watering_data.get(entry.entry_id))
+    moisture_entity = entry.data[CONF_MOISTURE_ENTITY]
+    stored = watering_data.get(entry.entry_id) or {}
+    # Readings of another sensor (changed through Reconfigure) would distort the
+    # watering dates and the drying rate; data saved before 1.6 does not say.
+    tracker = WateringTracker.from_dict(
+        stored if stored.get("entity") == moisture_entity else None
+    )
     entry_data = {"watering": tracker}
-    for kind in ("moisture", "battery"):
+    for kind in ALERT_KINDS:
         entry_data.update({
             f"{kind}_alert_active": False,
             f"{kind}_alert_pending": False,
@@ -119,7 +131,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     @callback
     def _watering_changed() -> None:
-        watering_data[entry.entry_id] = tracker.as_dict()
+        watering_data[entry.entry_id] = {**tracker.as_dict(), "entity": moisture_entity}
         watering_store.async_delay_save(lambda: watering_data, 30)
         async_dispatcher_send(hass, signal_updated(entry.entry_id))
 
@@ -138,10 +150,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     @callback
     def _cancel_pending_alerts():
         # A single unload hook cancels whichever alert or reminder is waiting.
-        for key in (
-            "moisture_alert_cancel", "battery_alert_cancel",
-            "moisture_reminder_cancel", "battery_reminder_cancel",
-        ):
+        for key in [
+            f"{kind}_{what}_cancel" for kind in ALERT_KINDS for what in ("alert", "reminder")
+        ]:
             cancel_pending = entry_data.get(key)
             if cancel_pending is not None:
                 cancel_pending()
@@ -157,8 +168,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if notified.get(kind, False) != value:
             notified[kind] = value
             alert_store.async_delay_save(lambda: alert_data, 1)
-
-    moisture_entity = entry.data[CONF_MOISTURE_ENTITY]
 
     @callback
     def _record_moisture(event) -> None:
@@ -224,10 +233,59 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             default_threshold=DEFAULT_BATTERY_LOW_THRESHOLD,
             # Battery readings fluctuate; re-arm only after a clear recovery.
             rearm_offset=5,
+            rearm_cap=100,
             build_message=lambda battery: (
                 f"🔋 Batterie faible — {plant_name}",
                 f"Le capteur de {plant_name} n'a plus que {battery:g} % de "
                 "batterie. Pensez à remplacer ou recharger sa pile.",
+            ),
+        )
+
+    temperature_entity = entry.data.get(CONF_TEMPERATURE_ENTITY)
+    if temperature_entity:
+        temperature_alerts = lambda: entry.options.get(  # noqa: E731
+            CONF_TEMPERATURE_ALERTS, DEFAULT_TEMPERATURE_ALERTS
+        )
+        _track_alert(
+            hass,
+            entry,
+            entry_data,
+            notified,
+            _remember_notified,
+            kind="cold",
+            entity_id=temperature_entity,
+            threshold_key=CONF_MIN_TEMPERATURE,
+            default_threshold=DEFAULT_MIN_TEMPERATURE,
+            # Room temperature wobbles: re-arm one degree above the minimum.
+            rearm_offset=1,
+            parse=parse_temperature,
+            parse_threshold=parse_temperature_threshold,
+            enabled=temperature_alerts,
+            build_message=lambda temperature: (
+                f"🥶 Trop froid — {plant_name}",
+                f"{plant_name} a froid : {temperature:g} °C. Éloignez-la d'une "
+                "fenêtre ou d'un courant d'air.",
+            ),
+        )
+        _track_alert(
+            hass,
+            entry,
+            entry_data,
+            notified,
+            _remember_notified,
+            kind="hot",
+            entity_id=temperature_entity,
+            threshold_key=CONF_MAX_TEMPERATURE,
+            default_threshold=DEFAULT_MAX_TEMPERATURE,
+            rearm_offset=1,
+            parse=parse_temperature,
+            parse_threshold=parse_temperature_threshold,
+            above=True,
+            enabled=temperature_alerts,
+            build_message=lambda temperature: (
+                f"🥵 Trop chaud — {plant_name}",
+                f"{plant_name} a trop chaud : {temperature:g} °C. Éloignez-la "
+                "du soleil direct ou d'une source de chaleur.",
             ),
         )
 
@@ -320,15 +378,23 @@ def _track_alert(
     default_threshold: float,
     rearm_offset: float,
     build_message,
+    rearm_cap: float | None = None,
+    parse=parse_reading,
+    parse_threshold=parse_percentage,
+    above: bool = False,
+    enabled=None,
     build_reminder=None,
     watered_since=None,
     actions: list[dict] | None = None,
 ) -> None:
-    """Notify once per low-value episode of a sensor, after the configured delay.
+    """Notify once per episode of a sensor below (or above) its threshold.
 
-    With ``build_reminder``, the alert is repeated every few hours (option)
-    while the value stays low and no watering was seen since the alert.
+    The alert waits for the configured delay. With ``build_reminder``, it is
+    repeated every few hours (option) while the value stays low and no
+    watering was seen since the alert. An alert ``above`` the threshold works
+    on negated values, so the logic below only ever handles "too low".
     """
+    sign = -1 if above else 1
     active_key = f"{kind}_alert_active"
     pending_key = f"{kind}_alert_pending"
     generation_key = f"{kind}_alert_generation"
@@ -340,13 +406,20 @@ def _track_alert(
     )
 
     def _threshold() -> float:
-        return parse_percentage(
+        return sign * parse_threshold(
             entry.options.get(threshold_key, default_threshold), default_threshold
         )
 
+    def _value(raw) -> float | None:
+        value = parse(raw)
+        return None if value is None else sign * value
+
     def _current() -> float | None:
         state = hass.states.get(entity_id)
-        return parse_reading(state.state) if state is not None else None
+        return _value(state.state) if state is not None else None
+
+    def _enabled() -> bool:
+        return _notifications_enabled(entry) and (enabled is None or enabled())
 
     @callback
     def _cancel_reminder() -> None:
@@ -373,13 +446,13 @@ def _track_alert(
             value = _current()
             if (
                 not entry_data[active_key]
-                or not _notifications_enabled(entry)
+                or not _enabled()
                 or value is None
                 or value >= _threshold()
                 or (watered_since is not None and watered_since(sent_at))
             ):
                 return
-            title, message = build_reminder(value)
+            title, message = build_reminder(sign * value)
             await _send_notifications(hass, entry, title, message, mobile_data)
             _schedule_reminder(_reminder_hours(entry))
 
@@ -407,11 +480,14 @@ def _track_alert(
 
         if entry_data[active_key]:
             # A new episode can alert only after the value recovers.
-            if current < min(threshold + rearm_offset, 100):
+            rearm_level = threshold + rearm_offset
+            if rearm_cap is not None:
+                rearm_level = min(rearm_level, rearm_cap)
+            if current < rearm_level:
                 return
             _set_active(False)
 
-        if not should_start_alert(
+        if not should_start_episode(
             current,
             previous,
             threshold,
@@ -419,7 +495,7 @@ def _track_alert(
             entry_data[pending_key],
         ):
             return
-        if not _notifications_enabled(entry):
+        if not _enabled():
             return
         if not any(_notify_targets(entry)):
             _LOGGER.debug(
@@ -440,7 +516,7 @@ def _track_alert(
                 return
             entry_data[pending_key] = False
             entry_data[cancel_key] = None
-            if not _notifications_enabled(entry) or entry_data[active_key]:
+            if not _enabled() or entry_data[active_key]:
                 return
             value = _current()
             if value is None or value >= _threshold():
@@ -449,7 +525,7 @@ def _track_alert(
             # Mark the episode before sending to prevent duplicate alerts.
             _set_active(True)
             entry_data[f"{kind}_alert_sent_at"] = time.time()
-            title, message = build_message(value)
+            title, message = build_message(sign * value)
             await _send_notifications(hass, entry, title, message, mobile_data)
             _schedule_reminder(_reminder_hours(entry))
 
@@ -462,11 +538,11 @@ def _track_alert(
         new_state = event.data.get("new_state")
         if new_state is None:
             return
-        current = parse_reading(new_state.state)
+        current = _value(new_state.state)
         if current is None:
             return
         old_state = event.data.get("old_state")
-        previous = parse_reading(old_state.state) if old_state is not None else None
+        previous = _value(old_state.state) if old_state is not None else None
         _process(current, previous)
 
     unsubscribe = async_track_state_change_event(hass, [entity_id], _handle_change)
@@ -488,6 +564,15 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         assign_plant_area(hass, entry.entry_id, entry.data[CONF_MOISTURE_ENTITY])
         hass.config_entries.async_update_entry(entry, minor_version=2)
+    if entry.version == 1 and entry.minor_version < 3:
+        # 1.6 follows the temperature: use the sensor of the soil probe, if any.
+        from .areas import sibling_temperature_entity
+
+        temperature = sibling_temperature_entity(hass, entry.data[CONF_MOISTURE_ENTITY])
+        data = dict(entry.data)
+        if temperature and not data.get(CONF_TEMPERATURE_ENTITY):
+            data[CONF_TEMPERATURE_ENTITY] = temperature
+        hass.config_entries.async_update_entry(entry, data=data, minor_version=3)
     return True
 
 

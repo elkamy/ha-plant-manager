@@ -16,7 +16,8 @@
           "plant_name": "Nom de la plante",
           "battery_entity": "Capteur de batterie (facultatif)",
           "profile": "Type de plante",
-          "species": "Espèce (facultatif)"
+          "species": "Espèce (facultatif)",
+          "temperature_entity": "Capteur de température (facultatif)"
         }
       },
       "species": {
@@ -24,7 +25,7 @@
         "description": "Sélectionnez l'espèce correspondant à votre plante. Ne sélectionnez rien pour continuer sans espèce.",
         "data": {
           "species_choice": "Espèce",
-          "apply_thresholds": "Utiliser les seuils d'humidité de l'espèce (OpenPlantbook)"
+          "apply_thresholds": "Utiliser les seuils d'humidité et de température de l'espèce (OpenPlantbook)"
         }
       },
       "reconfigure": {
@@ -32,7 +33,8 @@
         "description": "Sélectionnez les capteurs de {plant_name}. Videz le champ batterie pour ne plus suivre la batterie.",
         "data": {
           "moisture_entity": "Capteur d'humidité du sol",
-          "battery_entity": "Capteur de batterie (facultatif)"
+          "battery_entity": "Capteur de batterie (facultatif)",
+          "temperature_entity": "Capteur de température (facultatif)"
         }
       }
     },
@@ -40,7 +42,8 @@
       "moisture_already_used": "Ce capteur d'humidité est déjà associé à une autre plante.",
       "name_required": "Saisissez un nom de plante.",
       "cannot_connect": "Impossible de joindre Wikipedia ou OpenPlantbook. Vérifiez la connexion Internet de Home Assistant.",
-      "species_not_found": "Aucune espèce trouvée. Essayez le nom scientifique ou un autre nom courant."
+      "species_not_found": "Aucune espèce trouvée. Essayez le nom scientifique ou un autre nom courant.",
+      "air_humidity": "Ce capteur mesure l'humidité de l'air, pas celle du sol. Le capteur d'humidité du sol de la même sonde est proposé à la place : validez pour l'utiliser, ou choisissez de nouveau ce capteur pour le garder."
     },
     "abort": {
       "already_configured": "Ce capteur d'humidité est déjà associé à une plante.",
@@ -71,7 +74,10 @@
           "battery_low_threshold": "Seuil d'alerte de batterie faible (%)",
           "reminder_hours": "Rappel si toujours sèche après (heures, 0 = jamais)",
           "quiet_start": "Début des heures calmes (facultatif)",
-          "quiet_end": "Fin des heures calmes (facultatif)"
+          "quiet_end": "Fin des heures calmes (facultatif)",
+          "min_temperature": "Température minimale conseillée (°C)",
+          "max_temperature": "Température maximale conseillée (°C)",
+          "temperature_alerts": "Alertes de température (trop froid ou trop chaud)"
         }
       },
       "species": {
@@ -87,7 +93,7 @@
         "description": "Sélectionnez l'espèce correspondant à votre plante. Ne sélectionnez rien pour continuer sans espèce.",
         "data": {
           "species_choice": "Espèce",
-          "apply_thresholds": "Utiliser les seuils d'humidité de l'espèce (OpenPlantbook)"
+          "apply_thresholds": "Utiliser les seuils d'humidité et de température de l'espèce (OpenPlantbook)"
         }
       },
       "plantbook": {
@@ -104,7 +110,8 @@
       "cannot_connect": "Impossible de joindre Wikipedia ou OpenPlantbook. Vérifiez la connexion Internet de Home Assistant.",
       "species_not_found": "Aucune espèce trouvée. Essayez le nom scientifique ou un autre nom courant.",
       "invalid_auth": "Identifiants OpenPlantbook refusés. Vérifiez le Client ID et le Client secret.",
-      "invalid_photo": "Ce fichier n'est pas une image JPEG, PNG, GIF ou WebP de moins de 5 Mo."
+      "invalid_photo": "Ce fichier n'est pas une image JPEG, PNG, GIF ou WebP de moins de 5 Mo.",
+      "invalid_temperatures": "La température maximale doit être supérieure à la température minimale."
     }
   },
   "entity": {

@@ -666,3 +666,38 @@ test("requests the configured history length and averages long histories", async
 test("fills a sections dashboard row by default", () => {
   assert.deepEqual(JSON.parse(JSON.stringify(new PlantManagerCard().getGridOptions())), { columns: 12, min_columns: 6 });
 });
+
+test("shows the temperature with its status", () => {
+  const html = renderCard({
+    "sensor.cold": plant("sensor.cold", "ok", {
+      plant_name: "Kentia", moisture: 50, temperature: 13.5, temperature_status: "too_cold",
+      min_temperature: 15, max_temperature: 30,
+    }),
+    "sensor.fine": plant("sensor.fine", "ok", {
+      plant_name: "Ficus", moisture: 50, temperature: 20, temperature_status: "ok",
+      min_temperature: 15, max_temperature: 30,
+    }),
+  });
+  assert.match(html, /class="temperature cold" title="Conseillé : 15–30 °C"><ha-icon icon="mdi:thermometer"><\/ha-icon><span>13,5 °C/);
+  assert.match(html, /class="temperature" title="[^"]*"><ha-icon icon="mdi:thermometer"><\/ha-icon><span>20 °C/);
+  // Watering is fine for both: the cold one gets the temperature advice.
+  assert.match(html, /Il fait trop froid pour cette plante/);
+  assert.match(html, /Rien à signaler pour le moment/);
+});
+
+test("the moisture advice comes before the temperature one", () => {
+  const html = renderCard({
+    "sensor.dry": plant("sensor.dry", "needs_water", {
+      plant_name: "Pachira", moisture: 20, temperature: 35, temperature_status: "too_hot",
+    }),
+  });
+  assert.match(html, /Vérifiez le substrat et arrosez/);
+  assert.doesNotMatch(html, /trop chaud/);
+});
+
+test("can hide the temperature", () => {
+  const html = renderCard({
+    "sensor.cold": plant("sensor.cold", "ok", { moisture: 50, temperature: 13, temperature_status: "too_cold" }),
+  }, { show_temperature: false });
+  assert.doesNotMatch(html, /class="temperature/);
+});

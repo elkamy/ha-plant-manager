@@ -1,5 +1,18 @@
 # Journal des modifications
 
+## [1.6.0] — 2026-10-04
+
+### Ajouté
+- Suivi de la température : capteur proposé automatiquement à l'ajout (même sonde), associé automatiquement aux plantes existantes, modifiable avec Reconfigurer.
+- Températures conseillées par type de plante ou par espèce (OpenPlantbook `min_temp` et `max_temp`), réglables dans les options.
+- Alertes « trop froid » et « trop chaud », désactivables séparément.
+- Les cartes affichent la température (option `show_temperature` pour la liste) et un conseil adapté ; attributs `temperature`, `temperature_status`, `min_temperature` et `max_temperature`.
+- L'ajout d'une plante signale un capteur d'humidité de l'air choisi à la place de l'humidité du sol de la même sonde, et propose le bon.
+
+### Corrigé
+- L'historique d'arrosage est remis à zéro quand le capteur d'humidité change, pour ne pas mélanger les mesures de deux capteurs. Les données enregistrées par la 1.5.0, qui ne précisent pas leur capteur, repartent de zéro.
+- La fiche détaillée n'affiche plus une description d'espèce qui ne fait que répéter son nom.
+
 ## [1.5.0] — 2026-10-04
 
 ### Ajouté

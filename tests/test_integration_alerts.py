@@ -479,10 +479,11 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
             hass.services.async_call.await_args.args[:2], ("notify", "send_message")
         )
 
-    async def test_migration_places_existing_plants_in_their_sensor_area_once(self):
+    async def test_migrations_set_the_area_once_and_the_temperature_sensor(self):
         calls = []
         areas = types.ModuleType("custom_components.plant_manager.areas")
         areas.assign_plant_area = lambda hass, entry_id, entity_id: calls.append((entry_id, entity_id))
+        areas.sibling_temperature_entity = lambda hass, entity_id: "sensor.pachira_temperature"
         sys.modules[areas.__name__] = areas
         self.addCleanup(sys.modules.pop, areas.__name__, None)
         hass = FakeHass()
@@ -493,11 +494,16 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(await INTEGRATION.async_migrate_entry(hass, entry))
         self.assertEqual(calls, [("test-entry", "sensor.pachira_soil_moisture")])
-        self.assertEqual(updates, [{"minor_version": 2}])
+        self.assertEqual(updates[0], {"minor_version": 2})
+        self.assertEqual(updates[1]["minor_version"], 3)
+        self.assertEqual(updates[1]["data"]["temperature_entity"], "sensor.pachira_temperature")
 
+        # From 1.1 (minor version 2): only the temperature sensor is added.
+        updates.clear()
         entry.minor_version = 2
         await INTEGRATION.async_migrate_entry(hass, entry)
         self.assertEqual(len(calls), 1)
+        self.assertEqual([u["minor_version"] for u in updates], [3])
 
     async def test_removing_a_plant_forgets_its_alert_state(self):
         hass = FakeHass()
@@ -640,6 +646,82 @@ class IntegrationAlertTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["alerts"]["moisture"]["pending"])
         self.assertEqual(result["watering"]["readings"], 1)
         self.assertEqual(result["watering"]["last_reading"][1], 25.0)
+
+    async def setup_with_temperature(self, **options):
+        hass = FakeHass()
+        entry = self.make_entry()
+        entry.data = {**entry.data, "temperature_entity": "sensor.pachira_temperature"}
+        entry.options = {**entry.options, **options}
+        await INTEGRATION.async_setup_entry(hass, entry)
+        return hass, entry
+
+    def temperature(self, hass, old, new):
+        entity_id = "sensor.pachira_temperature"
+        hass.states.values[entity_id] = FakeState(new)
+        hass.state_change_callbacks[entity_id](types.SimpleNamespace(data={
+            "old_state": FakeState(old) if old is not None else None,
+            "new_state": FakeState(new),
+        }))
+
+    async def test_cold_plant_is_notified_once(self):
+        hass, _entry = await self.setup_with_temperature()
+        self.temperature(hass, 16, 14)
+        self.temperature(hass, 14, 13)
+        self.assertEqual(len(hass.delayed_callbacks), 1)
+        await hass.fire_delayed()
+        title = hass.services.async_call.await_args.args[2]["title"]
+        self.assertEqual(title, "🥶 Trop froid — Pachira")
+
+    async def test_freezing_temperatures_are_valid_readings(self):
+        hass, _entry = await self.setup_with_temperature()
+        self.temperature(hass, 16, -2)
+        await hass.fire_delayed()
+        self.assertIn("-2 °C", hass.services.async_call.await_args.args[2]["message"])
+
+    async def test_hot_plant_is_notified_and_rearms_one_degree_below_the_maximum(self):
+        hass, _entry = await self.setup_with_temperature(max_temperature=30)
+        self.temperature(hass, 29, 31)
+        await hass.fire_delayed(0)
+        self.assertEqual(
+            hass.services.async_call.await_args.args[2]["title"], "🥵 Trop chaud — Pachira"
+        )
+        # 29.5 °C is still too close to the maximum to start a new episode.
+        self.temperature(hass, 31, 29.5)
+        self.temperature(hass, 29.5, 31)
+        self.assertEqual(len(hass.delayed_callbacks), 1)
+        self.temperature(hass, 31, 29)
+        self.temperature(hass, 29, 31)
+        self.assertEqual(len(hass.delayed_callbacks), 2)
+
+    async def test_temperature_alerts_can_be_turned_off_alone(self):
+        hass, _entry = await self.setup_with_temperature(temperature_alerts=False)
+        self.temperature(hass, 16, 10)
+        self.assertEqual(hass.delayed_callbacks, [])
+        # Moisture alerts keep working.
+        self.moisture(hass, 31, 25)
+        self.assertEqual(len(hass.delayed_callbacks), 1)
+
+    async def test_watering_history_of_another_sensor_is_dropped(self):
+        hass = FakeHass()
+        hass.stored["plant_manager.watering"] = {
+            "test-entry": {"readings": [[1, 77]], "last_watered": 1, "entity": "sensor.air_humidity"},
+        }
+        entry = self.make_entry()
+        await INTEGRATION.async_setup_entry(hass, entry)
+        tracker = entry.runtime_data["watering"]
+        self.assertEqual(tracker.readings, [])
+        self.assertIsNone(tracker.last_watered)
+
+    async def test_watering_history_of_the_same_sensor_is_kept(self):
+        hass = FakeHass()
+        hass.stored["plant_manager.watering"] = {
+            "test-entry": {
+                "readings": [[1, 40]], "last_watered": 1, "entity": "sensor.pachira_soil_moisture",
+            },
+        }
+        entry = self.make_entry()
+        await INTEGRATION.async_setup_entry(hass, entry)
+        self.assertEqual(entry.runtime_data["watering"].last_watered, 1)
 
     async def test_pending_battery_alert_is_cancelled_on_unload(self):
         hass, entry = await self.setup_integration(with_battery=True)

@@ -52,3 +52,22 @@ def assign_plant_area(hass: HomeAssistant, entry_id: str, entity_id: str) -> Non
     area_id = moisture_area_id(hass, entity_id)
     if area_id:
         registry.async_update_device(device.id, area_id=area_id)
+
+
+def sibling_temperature_entity(hass: HomeAssistant, moisture_entity_id: str) -> str | None:
+    """The temperature sensor of the soil probe's device, if any."""
+    from homeassistant.helpers import entity_registry as er
+
+    from .suggest import suggest_temperature_entity
+
+    registry = er.async_get(hass)
+    entities = [
+        {
+            "entity_id": entity.entity_id,
+            "device_id": entity.device_id,
+            "device_class": entity.device_class or entity.original_device_class,
+            "disabled": entity.disabled_by is not None,
+        }
+        for entity in registry.entities.values()
+    ]
+    return suggest_temperature_entity(moisture_entity_id, entities)

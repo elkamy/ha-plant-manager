@@ -282,3 +282,31 @@ test("requests the configured history length", async () => {
 test("takes half of a sections dashboard by default", () => {
   assert.deepEqual(JSON.parse(JSON.stringify(new DetailCard().getGridOptions())), { columns: 6, min_columns: 4 });
 });
+
+test("shows the temperature row with the recommended range", () => {
+  const html = render({
+    "sensor.monstera_status": plant("ok", {
+      temperature_entity: "sensor.monstera_temperature", temperature: 31.2,
+      temperature_status: "too_hot", min_temperature: 18, max_temperature: 30,
+    }),
+  });
+  assert.match(html, /<strong>Température<\/strong><span>Conseillé : 18–30 °C<\/span>/);
+  assert.match(html, /class="temperature-value hot">31,2 °C/);
+  assert.match(html, /Il fait trop chaud pour cette plante/);
+});
+
+test("hides the temperature row without a temperature sensor", () => {
+  assert.doesNotMatch(render({ "sensor.monstera_status": plant() }), /<section class="temperature-row"/);
+});
+
+test("skips a species description that repeats the name", () => {
+  // Real case: OpenPlantbook alias "chlorophytum comosum" for "Chlorophytum comosum 'Variegatum'".
+  const html = render({
+    "sensor.monstera_status": plant("ok", {
+      plant_name: "Chlorophytum",
+      species: "Chlorophytum comosum 'Variegatum'",
+      species_description: "chlorophytum comosum",
+    }),
+  });
+  assert.match(html, /<div class="species"><em>Chlorophytum comosum &#39;Variegatum&#39;<\/em><\/div>/);
+});

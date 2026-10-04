@@ -16,11 +16,16 @@ from custom_components.plant_manager.const import DOMAIN
 
 async def _setup(hass: HomeAssistant, moisture="45", **options) -> MockConfigEntry:
     hass.states.async_set("sensor.ficus_moisture", moisture)
+    hass.states.async_set("sensor.ficus_temperature", "20")
     entry = MockConfigEntry(
         domain=DOMAIN,
         title="Ficus",
         unique_id="sensor.ficus_moisture",
-        data={"plant_name": "Ficus", "moisture_entity": "sensor.ficus_moisture"},
+        data={
+            "plant_name": "Ficus",
+            "moisture_entity": "sensor.ficus_moisture",
+            "temperature_entity": "sensor.ficus_temperature",
+        },
         options={"low_threshold": 30, "high_threshold": 80, "delay_minutes": 1, **options},
         version=1,
         minor_version=2,
@@ -108,3 +113,18 @@ async def test_unload_and_remove(hass: HomeAssistant) -> None:
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     assert await hass.config_entries.async_remove(entry.entry_id)
+
+
+async def test_cold_plant_alert_and_temperature_attributes(hass: HomeAssistant) -> None:
+    calls = async_mock_service(hass, "notify", "mobile_app_phone")
+    entry = await _setup(hass, notify_service=["notify.mobile_app_phone"])
+    status = _entity(hass, entry, "status")
+    assert hass.states.get(status).attributes["temperature_status"] == "ok"
+
+    hass.states.async_set("sensor.ficus_temperature", "12.5")
+    await hass.async_block_till_done()
+    assert hass.states.get(status).attributes["temperature_status"] == "too_cold"
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=2))
+    await hass.async_block_till_done()
+
+    assert [call.data["title"] for call in calls] == ["🥶 Trop froid — Ficus"]

@@ -27,8 +27,18 @@ def _soil_sensor(hass: HomeAssistant, name: str = "Plante-Ficus") -> None:
         "sensor", "test", "battery", device_id=device.id,
         original_device_class="battery", suggested_object_id="ficus_battery",
     )
+    registry.async_get_or_create(
+        "sensor", "test", "temperature", device_id=device.id,
+        original_device_class="temperature", suggested_object_id="ficus_temperature",
+    )
+    registry.async_get_or_create(
+        "sensor", "test", "air", device_id=device.id,
+        original_device_class="humidity", suggested_object_id="ficus_air_humidity",
+    )
     hass.states.async_set("sensor.ficus_moisture", "45")
     hass.states.async_set("sensor.ficus_battery", "80")
+    hass.states.async_set("sensor.ficus_temperature", "21")
+    hass.states.async_set("sensor.ficus_air_humidity", "77")
 
 
 def _field(result, name):
@@ -60,13 +70,22 @@ async def test_creation_suggests_name_battery_and_applies_the_profile(hass: Home
     assert result["step_id"] == "plant"
     assert _field(result, "plant_name").default() == "Ficus"
     assert _field(result, "battery_entity").description["suggested_value"] == "sensor.ficus_battery"
+    assert _field(result, "temperature_entity").description["suggested_value"] == "sensor.ficus_temperature"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {"plant_name": "Ficus", "battery_entity": "sensor.ficus_battery", "profile": "succulent"},
+        {
+            "plant_name": "Ficus",
+            "battery_entity": "sensor.ficus_battery",
+            "temperature_entity": "sensor.ficus_temperature",
+            "profile": "succulent",
+        },
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["options"] == {"low_threshold": 10, "high_threshold": 50}
+    assert result["data"]["temperature_entity"] == "sensor.ficus_temperature"
+    assert result["options"] == {
+        "low_threshold": 10, "high_threshold": 50, "min_temperature": 10, "max_temperature": 35,
+    }
     await hass.async_block_till_done()
 
     entities = er.async_entries_for_config_entry(er.async_get(hass), result["result"].entry_id)
@@ -74,6 +93,21 @@ async def test_creation_suggests_name_battery_and_applies_the_profile(hass: Home
     status = next(e for e in entities if e.unique_id.endswith("_status"))
     # 45 % is between the succulent thresholds.
     assert hass.states.get(status.entity_id).state == "ok"
+
+
+async def test_creation_offers_the_soil_sensor_instead_of_the_air_humidity(hass: HomeAssistant) -> None:
+    _soil_sensor(hass)
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"moisture_entity": "sensor.ficus_air_humidity"}
+    )
+    assert result["errors"] == {"moisture_entity": "air_humidity"}
+    assert _field(result, "moisture_entity").default() == "sensor.ficus_moisture"
+    # Picking the air sensor again keeps it.
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"moisture_entity": "sensor.ficus_air_humidity"}
+    )
+    assert result["step_id"] == "plant"
 
 
 async def test_creation_rejects_a_sensor_already_used(hass: HomeAssistant) -> None:
@@ -104,7 +138,7 @@ async def test_creation_with_a_species(hass: HomeAssistant) -> None:
     match = SpeciesMatch("openplantbook", "ficus elastica", "Ficus elastica", "rubber plant")
     details = SpeciesDetails(
         "openplantbook", "Ficus elastica", "rubber plant",
-        "https://example.com/ficus.jpg", (20.0, 60.0), "ficus elastica",
+        "https://example.com/ficus.jpg", (20.0, 60.0), "ficus elastica", (12.0, 32.0),
     )
     with (
         patch("custom_components.plant_manager.config_flow._search_species", return_value=[match]),
@@ -128,6 +162,7 @@ async def test_creation_with_a_species(hass: HomeAssistant) -> None:
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["options"]["species"] == "Ficus elastica"
     assert (result["options"]["low_threshold"], result["options"]["high_threshold"]) == (20.0, 60.0)
+    assert (result["options"]["min_temperature"], result["options"]["max_temperature"]) == (12.0, 32.0)
     assert result["options"]["image_url"].startswith("/plant_manager/images/")
 
 

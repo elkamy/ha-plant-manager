@@ -158,6 +158,13 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(details.image_url, "https://opb-img.plantbook.io/abelia%20chinensis.jpg")
         self.assertEqual(details.pid, "abelia chinensis")
 
+    def test_plantbook_detail_gives_temperatures(self):
+        self.assertEqual(SPECIES.parse_plantbook_detail(PLANTBOOK_DETAIL).temperatures, (8.0, 35.0))
+        for low, high in ((35, 8), (None, 35), (8, "hot")):
+            with self.subTest(low=low, high=high):
+                data = {**PLANTBOOK_DETAIL, "min_temp": low, "max_temp": high}
+                self.assertIsNone(SPECIES.parse_plantbook_detail(data).temperatures)
+
     def test_plantbook_invalid_thresholds_are_ignored(self):
         for low, high in ((70, 20), (None, 60), (-5, 60), (15, "n/a")):
             with self.subTest(low=low, high=high):

@@ -19,6 +19,9 @@ from .const import (
     CONF_SPECIES_CHOICE, CONF_APPLY_THRESHOLDS, CONF_PHOTO,
     CONF_PLANTBOOK_CLIENT_ID, CONF_PLANTBOOK_CLIENT_SECRET,
     CONF_REMINDER_HOURS, CONF_QUIET_START, CONF_QUIET_END, DEFAULT_REMINDER_HOURS,
+    CONF_TEMPERATURE_ENTITY, CONF_MIN_TEMPERATURE, CONF_MAX_TEMPERATURE,
+    CONF_TEMPERATURE_ALERTS, DEFAULT_MIN_TEMPERATURE, DEFAULT_MAX_TEMPERATURE,
+    DEFAULT_TEMPERATURE_ALERTS, TEMPERATURE_PROFILES,
 )
 from .species import (
     SOURCE_PLANTBOOK,
@@ -34,7 +37,12 @@ from .species import (
     wikipedia_search,
     wikipedia_summary,
 )
-from .suggest import suggest_battery_entity, suggest_plant_name
+from .suggest import (
+    soil_sensor_instead,
+    suggest_battery_entity,
+    suggest_plant_name,
+    suggest_temperature_entity,
+)
 
 _LOGGER = logging.getLogger(__name__)
 MAX_SPECIES_MATCHES = 10
@@ -85,6 +93,15 @@ REMINDER_SELECTOR = selector.NumberSelector(
     )
 )
 TIME_SELECTOR = selector.TimeSelector()
+TEMPERATURE_SELECTOR = selector.NumberSelector(
+    selector.NumberSelectorConfig(
+        min=-10,
+        max=45,
+        step=0.5,
+        unit_of_measurement="°C",
+        mode=selector.NumberSelectorMode.BOX,
+    )
+)
 PHOTO_SELECTOR = selector.FileSelector(selector.FileSelectorConfig(accept="image/*"))
 SECRET_SELECTOR = selector.TextSelector(
     selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
@@ -201,48 +218,96 @@ def _species_choice_schema(matches: list[SpeciesMatch], with_thresholds: bool) -
     return vol.Schema(fields)
 
 
-def _battery_field(battery: str | None) -> dict:
-    # A suggested value (not a default) lets the user clear the battery sensor.
+def _optional_sensor_fields(defaults: dict) -> dict:
+    # Suggested values (not defaults) let the user clear an optional sensor.
     return {
         vol.Optional(
-            CONF_BATTERY_ENTITY,
-            description={"suggested_value": battery} if battery else None,
-        ): SENSOR_SELECTOR,
+            key,
+            description={"suggested_value": defaults[key]} if defaults.get(key) else None,
+        ): SENSOR_SELECTOR
+        for key in (CONF_BATTERY_ENTITY, CONF_TEMPERATURE_ENTITY)
     }
 
 
 def _sensor_fields(defaults: dict) -> dict:
-    battery = defaults.get(CONF_BATTERY_ENTITY)
     return {
         vol.Required(
             CONF_MOISTURE_ENTITY,
             default=defaults.get(CONF_MOISTURE_ENTITY, vol.UNDEFINED),
         ): SENSOR_SELECTOR,
-        **_battery_field(battery),
+        **_optional_sensor_fields(defaults),
     }
+
+
+def _with_optional_sensors(data: dict, user_input: dict) -> dict:
+    """Set or remove the battery and temperature sensors chosen in a form."""
+    data = dict(data)
+    for key in (CONF_BATTERY_ENTITY, CONF_TEMPERATURE_ENTITY):
+        if user_input.get(key):
+            data[key] = user_input[key]
+        else:
+            data.pop(key, None)
+    return data
+
+
+def _species_threshold_options(details: SpeciesDetails) -> dict:
+    """The moisture and temperature thresholds a species brings, if known."""
+    options = {}
+    if details.thresholds:
+        options.update(dict(zip((CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD), details.thresholds)))
+    if details.temperatures:
+        options.update(dict(zip((CONF_MIN_TEMPERATURE, CONF_MAX_TEMPERATURE), details.temperatures)))
+    return options
+
+
+def _registry_entities(hass) -> list[dict]:
+    from homeassistant.helpers import entity_registry as er
+
+    return [
+        {
+            "entity_id": entity.entity_id,
+            "device_id": entity.device_id,
+            "device_class": entity.device_class or entity.original_device_class,
+            "disabled": entity.disabled_by is not None,
+        }
+        for entity in er.async_get(hass).entities.values()
+    ]
 
 
 class PlantManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
-    # 2: plant devices take their sensor's area (see async_migrate_entry).
-    MINOR_VERSION = 2
+    # 2: plant devices take their sensor's area; 3: the probe's temperature
+    # sensor is followed (see async_migrate_entry).
+    MINOR_VERSION = 3
 
     def __init__(self) -> None:
         self._moisture_entity: str | None = None
+        self._kept_air_humidity: str | None = None
         self._data: dict = {}
         self._options: dict = {}
         self._matches: list[SpeciesMatch] = []
 
     async def async_step_user(self, user_input=None):
         """Pick the moisture sensor; the next step is pre-filled from its device."""
+        errors = {}
+        default = vol.UNDEFINED
         if user_input is not None:
-            self._moisture_entity = user_input[CONF_MOISTURE_ENTITY]
-            await self.async_set_unique_id(self._moisture_entity)
-            self._abort_if_unique_id_configured()
-            return await self.async_step_plant()
+            selected = user_input[CONF_MOISTURE_ENTITY]
+            soil = soil_sensor_instead(selected, _registry_entities(self.hass))
+            if soil and selected != self._kept_air_humidity:
+                # An air humidity sensor of a soil probe: offer its soil sensor,
+                # but accept the air one if the user picks it again.
+                self._kept_air_humidity = selected
+                errors[CONF_MOISTURE_ENTITY] = "air_humidity"
+                default = soil
+            else:
+                self._moisture_entity = selected
+                await self.async_set_unique_id(self._moisture_entity)
+                self._abort_if_unique_id_configured()
+                return await self.async_step_plant()
 
-        schema = vol.Schema({vol.Required(CONF_MOISTURE_ENTITY): SENSOR_SELECTOR})
-        return self.async_show_form(step_id="user", data_schema=schema)
+        schema = vol.Schema({vol.Required(CONF_MOISTURE_ENTITY, default=default): SENSOR_SELECTOR})
+        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
     async def async_step_plant(self, user_input=None):
         errors = {}
@@ -255,13 +320,19 @@ class PlantManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_PLANT_NAME: plant_name,
                     CONF_MOISTURE_ENTITY: self._moisture_entity,
                 }
-                if user_input.get(CONF_BATTERY_ENTITY):
-                    data[CONF_BATTERY_ENTITY] = user_input[CONF_BATTERY_ENTITY]
-                low, high = PROFILES.get(
-                    user_input.get(CONF_PROFILE), PROFILES[DEFAULT_PROFILE]
+                data = _with_optional_sensors(data, user_input)
+                profile = user_input.get(CONF_PROFILE)
+                low, high = PROFILES.get(profile, PROFILES[DEFAULT_PROFILE])
+                cold, hot = TEMPERATURE_PROFILES.get(
+                    profile, TEMPERATURE_PROFILES[DEFAULT_PROFILE]
                 )
                 self._data = data
-                self._options = {CONF_LOW_THRESHOLD: low, CONF_HIGH_THRESHOLD: high}
+                self._options = {
+                    CONF_LOW_THRESHOLD: low,
+                    CONF_HIGH_THRESHOLD: high,
+                    CONF_MIN_TEMPERATURE: cold,
+                    CONF_MAX_TEMPERATURE: hot,
+                }
                 query = (user_input.get(CONF_SPECIES) or "").strip()
                 if not query:
                     return self._create_plant()
@@ -281,7 +352,7 @@ class PlantManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(
                 CONF_PLANT_NAME, default=defaults.get(CONF_PLANT_NAME) or vol.UNDEFINED
             ): str,
-            **_battery_field(defaults.get(CONF_BATTERY_ENTITY)),
+            **_optional_sensor_fields(defaults),
             vol.Required(
                 CONF_PROFILE, default=defaults.get(CONF_PROFILE, DEFAULT_PROFILE)
             ): PROFILE_SELECTOR,
@@ -311,9 +382,8 @@ class PlantManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
             else:
                 self._options.update(_species_options(details))
-                if details.thresholds and user_input.get(CONF_APPLY_THRESHOLDS, True):
-                    low, high = details.thresholds
-                    self._options.update({CONF_LOW_THRESHOLD: low, CONF_HIGH_THRESHOLD: high})
+                if user_input.get(CONF_APPLY_THRESHOLDS, True):
+                    self._options.update(_species_threshold_options(details))
                 photo = await _store_species_photo(self.hass, details)
                 if photo:
                     self._options[CONF_IMAGE_URL] = photo
@@ -334,20 +404,11 @@ class PlantManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     def _suggestions(self) -> dict:
-        """Suggest the plant name and battery sensor from the sensor's device."""
+        """Suggest the plant name and other sensors from the sensor's device."""
         from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-        entity_registry = er.async_get(self.hass)
-        entities = [
-            {
-                "entity_id": entity.entity_id,
-                "device_id": entity.device_id,
-                "device_class": entity.device_class or entity.original_device_class,
-                "disabled": entity.disabled_by is not None,
-            }
-            for entity in entity_registry.entities.values()
-        ]
-        entity = entity_registry.async_get(self._moisture_entity)
+        entities = _registry_entities(self.hass)
+        entity = er.async_get(self.hass).async_get(self._moisture_entity)
         device = (
             dr.async_get(self.hass).async_get(entity.device_id)
             if entity is not None and entity.device_id
@@ -360,6 +421,7 @@ class PlantManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 state.name if state is not None else None,
             ),
             CONF_BATTERY_ENTITY: suggest_battery_entity(self._moisture_entity, entities),
+            CONF_TEMPERATURE_ENTITY: suggest_temperature_entity(self._moisture_entity, entities),
         }
 
     async def async_step_reconfigure(self, user_input=None):
@@ -373,11 +435,9 @@ class PlantManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ):
                 errors["base"] = "moisture_already_used"
             else:
-                data = {**entry.data, CONF_MOISTURE_ENTITY: moisture_entity}
-                if user_input.get(CONF_BATTERY_ENTITY):
-                    data[CONF_BATTERY_ENTITY] = user_input[CONF_BATTERY_ENTITY]
-                else:
-                    data.pop(CONF_BATTERY_ENTITY, None)
+                data = _with_optional_sensors(
+                    {**entry.data, CONF_MOISTURE_ENTITY: moisture_entity}, user_input
+                )
                 self.hass.config_entries.async_update_entry(
                     entry, data=data, unique_id=moisture_entity
                 )
@@ -422,6 +482,11 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             if user_input[CONF_HIGH_THRESHOLD] <= user_input[CONF_LOW_THRESHOLD]:
                 errors["base"] = "invalid_thresholds"
+            elif (
+                CONF_MIN_TEMPERATURE in user_input
+                and user_input[CONF_MAX_TEMPERATURE] <= user_input[CONF_MIN_TEMPERATURE]
+            ):
+                errors["base"] = "invalid_temperatures"
             else:
                 # Keep the species options this form does not show. The number
                 # selector returns floats; the delay is whole minutes.
@@ -497,6 +562,31 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
                 CONF_DELAY,
                 default=self.config_entry.options.get(CONF_DELAY, DEFAULT_DELAY),
             ): DELAY_SELECTOR,
+            **(
+                {
+                    vol.Required(
+                        CONF_MIN_TEMPERATURE,
+                        default=self.config_entry.options.get(
+                            CONF_MIN_TEMPERATURE, DEFAULT_MIN_TEMPERATURE
+                        ),
+                    ): TEMPERATURE_SELECTOR,
+                    vol.Required(
+                        CONF_MAX_TEMPERATURE,
+                        default=self.config_entry.options.get(
+                            CONF_MAX_TEMPERATURE, DEFAULT_MAX_TEMPERATURE
+                        ),
+                    ): TEMPERATURE_SELECTOR,
+                    vol.Required(
+                        CONF_TEMPERATURE_ALERTS,
+                        default=self.config_entry.options.get(
+                            CONF_TEMPERATURE_ALERTS, DEFAULT_TEMPERATURE_ALERTS
+                        ),
+                    ): bool,
+                }
+                # Only plants following a temperature sensor show these fields.
+                if self.config_entry.data.get(CONF_TEMPERATURE_ENTITY)
+                else {}
+            ),
             vol.Required(
                 CONF_REMINDER_HOURS,
                 default=self.config_entry.options.get(
@@ -582,9 +672,8 @@ class PlantManagerOptionsFlow(config_entries.OptionsFlow):
                 errors["base"] = "cannot_connect"
             else:
                 self._options.update(_species_options(details))
-                if details.thresholds and user_input.get(CONF_APPLY_THRESHOLDS, True):
-                    low, high = details.thresholds
-                    self._options.update({CONF_LOW_THRESHOLD: low, CONF_HIGH_THRESHOLD: high})
+                if user_input.get(CONF_APPLY_THRESHOLDS, True):
+                    self._options.update(_species_threshold_options(details))
                 # A photo the user just sent is kept over the species photo.
                 if not self._own_photo:
                     photo = await _store_species_photo(self.hass, details)

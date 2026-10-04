@@ -16,7 +16,8 @@
           "plant_name": "Plant name",
           "battery_entity": "Battery sensor (optional)",
           "profile": "Plant type",
-          "species": "Species (optional)"
+          "species": "Species (optional)",
+          "temperature_entity": "Temperature sensor (optional)"
         }
       },
       "species": {
@@ -24,7 +25,7 @@
         "description": "Select the species matching your plant. Select nothing to continue without a species.",
         "data": {
           "species_choice": "Species",
-          "apply_thresholds": "Use the species moisture thresholds (OpenPlantbook)"
+          "apply_thresholds": "Use the species moisture and temperature thresholds (OpenPlantbook)"
         }
       },
       "reconfigure": {
@@ -32,7 +33,8 @@
         "description": "Select the sensors of {plant_name}. Clear the battery field to stop tracking the battery.",
         "data": {
           "moisture_entity": "Soil moisture sensor",
-          "battery_entity": "Battery sensor (optional)"
+          "battery_entity": "Battery sensor (optional)",
+          "temperature_entity": "Temperature sensor (optional)"
         }
       }
     },
@@ -40,7 +42,8 @@
       "moisture_already_used": "This moisture sensor is already assigned to another plant.",
       "name_required": "Enter a plant name.",
       "cannot_connect": "Could not reach Wikipedia or OpenPlantbook. Check Home Assistant's Internet connection.",
-      "species_not_found": "No species found. Try the scientific name or another common name."
+      "species_not_found": "No species found. Try the scientific name or another common name.",
+      "air_humidity": "This sensor measures the air humidity, not the soil moisture. The soil moisture sensor of the same probe is suggested instead: submit to use it, or pick this sensor again to keep it."
     },
     "abort": {
       "already_configured": "This moisture sensor is already assigned to a plant.",
@@ -71,7 +74,10 @@
           "battery_low_threshold": "Low battery alert threshold (%)",
           "reminder_hours": "Remind if still dry after (hours, 0 = never)",
           "quiet_start": "Quiet hours start (optional)",
-          "quiet_end": "Quiet hours end (optional)"
+          "quiet_end": "Quiet hours end (optional)",
+          "min_temperature": "Minimum recommended temperature (°C)",
+          "max_temperature": "Maximum recommended temperature (°C)",
+          "temperature_alerts": "Temperature alerts (too cold or too hot)"
         }
       },
       "species": {
@@ -87,7 +93,7 @@
         "description": "Select the species matching your plant. Select nothing to continue without a species.",
         "data": {
           "species_choice": "Species",
-          "apply_thresholds": "Use the species moisture thresholds (OpenPlantbook)"
+          "apply_thresholds": "Use the species moisture and temperature thresholds (OpenPlantbook)"
         }
       },
       "plantbook": {
@@ -104,7 +110,8 @@
       "cannot_connect": "Could not reach Wikipedia or OpenPlantbook. Check Home Assistant's Internet connection.",
       "species_not_found": "No species found. Try the scientific name or another common name.",
       "invalid_auth": "OpenPlantbook rejected the credentials. Check the Client ID and Client secret.",
-      "invalid_photo": "This file is not a JPEG, PNG, GIF or WebP image under 5 MB."
+      "invalid_photo": "This file is not a JPEG, PNG, GIF or WebP image under 5 MB.",
+      "invalid_temperatures": "The maximum temperature must be greater than the minimum temperature."
     }
   },
   "entity": {

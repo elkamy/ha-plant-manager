@@ -19,6 +19,8 @@ normalize_notify_services = ALERTS.normalize_notify_services
 normalize_notify_entities = ALERTS.normalize_notify_entities
 parse_reading = ALERTS.parse_reading
 parse_time_of_day = ALERTS.parse_time_of_day
+should_start_episode = ALERTS.should_start_episode
+parse_temperature = ALERTS.parse_temperature
 seconds_until_allowed = ALERTS.seconds_until_allowed
 
 
@@ -130,6 +132,21 @@ class ConfigurationHelperTests(unittest.TestCase):
         self.assertEqual(normalize_notify_entities(42), [])
 
 
+
+
+class TemperatureHelperTests(unittest.TestCase):
+    def test_episodes_start_in_any_unit_including_negative_values(self):
+        self.assertTrue(should_start_episode(-3, 2, 0, False, False))
+        self.assertFalse(should_start_episode(-3, -1, 0, False, False))
+        self.assertFalse(should_start_episode(150, None, 100, False, False))
+        self.assertTrue(should_start_episode(-31, -29, -30, False, False))
+
+    def test_parse_temperature(self):
+        self.assertEqual(parse_temperature("21.5"), 21.5)
+        self.assertEqual(parse_temperature("-5"), -5.0)
+        for value in ("unknown", None, "nan", "-60", "120"):
+            with self.subTest(value=value):
+                self.assertIsNone(parse_temperature(value))
 
 class QuietHoursTests(unittest.TestCase):
     def at(self, hour, minute=0):

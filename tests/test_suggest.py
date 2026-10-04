@@ -57,6 +57,32 @@ class SuggestBatteryEntityTests(unittest.TestCase):
         self.assertIsNone(SUGGEST.suggest_battery_entity("sensor.unknown", entities))
 
 
+class SuggestSiblingTests(unittest.TestCase):
+    # Real case: a COOLO probe reports soil moisture, air humidity and temperature.
+    ENTITIES = [
+        entity("sensor.plante_chlorophytum_soil_moisture", device_class="moisture"),
+        entity("sensor.plante_chlorophytum_humidity", device_class="humidity"),
+        entity("sensor.plante_chlorophytum_temperature", device_class="temperature"),
+        entity("sensor.plante_chlorophytum_battery", device_class="battery"),
+    ]
+
+    def test_temperature_sensor_of_the_same_device(self):
+        self.assertEqual(
+            SUGGEST.suggest_temperature_entity("sensor.plante_chlorophytum_soil_moisture", self.ENTITIES),
+            "sensor.plante_chlorophytum_temperature",
+        )
+
+    def test_soil_sensor_suggested_when_air_humidity_was_picked(self):
+        self.assertEqual(
+            SUGGEST.soil_sensor_instead("sensor.plante_chlorophytum_humidity", self.ENTITIES),
+            "sensor.plante_chlorophytum_soil_moisture",
+        )
+        self.assertIsNone(
+            SUGGEST.soil_sensor_instead("sensor.plante_chlorophytum_soil_moisture", self.ENTITIES)
+        )
+        self.assertIsNone(SUGGEST.soil_sensor_instead("sensor.unknown", self.ENTITIES))
+
+
 class SuggestPlantNameTests(unittest.TestCase):
     def test_prefers_the_device_name(self):
         self.assertEqual(

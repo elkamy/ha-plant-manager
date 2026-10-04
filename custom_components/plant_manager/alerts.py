@@ -28,6 +28,43 @@ def should_start_alert(
     )
 
 
+def should_start_episode(
+    current: float,
+    previous: float | None,
+    threshold: float,
+    alert_active: bool,
+    alert_pending: bool,
+) -> bool:
+    """Whether a value just went below the threshold, in any unit.
+
+    The readings are expected to be validated already; a previous value
+    below the threshold means the episode had started before.
+    """
+    return (
+        math.isfinite(current)
+        and math.isfinite(threshold)
+        and current < threshold
+        and not (previous is not None and math.isfinite(previous) and previous < threshold)
+        and not alert_active
+        and not alert_pending
+    )
+
+
+def parse_temperature(value) -> float | None:
+    """Return a plausible temperature in °C, or None."""
+    try:
+        temperature = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return temperature if math.isfinite(temperature) and -40 <= temperature <= 70 else None
+
+
+def parse_temperature_threshold(value, default: float) -> float:
+    """Parse a temperature threshold, falling back to a default if invalid."""
+    temperature = parse_temperature(value)
+    return float(default) if temperature is None else temperature
+
+
 def parse_reading(value) -> float | None:
     """Return a valid 0-100 sensor reading, or None if it cannot be trusted."""
     try:

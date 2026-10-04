@@ -40,6 +40,10 @@ const PLANT_MANAGER_TEXT = {
     emptyTitle: "Aucune plante pour le moment",
     emptyText: "Ajoutez une plante dans Plant Manager pour commencer le suivi.",
     stubTitle: "Mes plantes",
+    locale: "fr",
+    temperatureRange: (min, max) => `Conseillé : ${min}–${max} °C`,
+    coldAdvice: "Il fait trop froid pour cette plante : éloignez-la d’une fenêtre ou d’un courant d’air.",
+    hotAdvice: "Il fait trop chaud pour cette plante : éloignez-la du soleil direct ou d’une source de chaleur.",
     editor: {
       labels: {
         title: "Titre",
@@ -49,6 +53,7 @@ const PLANT_MANAGER_TEXT = {
         history_days: "Durée de l'historique",
         show_images: "Afficher les photos",
         show_battery: "Afficher la batterie",
+        show_temperature: "Afficher la température",
         show_history: "Afficher l'historique",
         compact: "Mode compact",
       },
@@ -100,6 +105,10 @@ const PLANT_MANAGER_TEXT = {
     emptyTitle: "No plants yet",
     emptyText: "Add a plant in Plant Manager to start tracking it.",
     stubTitle: "My plants",
+    locale: "en",
+    temperatureRange: (min, max) => `Recommended: ${min}–${max} °C`,
+    coldAdvice: "Too cold for this plant: move it away from a window or a draught.",
+    hotAdvice: "Too hot for this plant: move it away from direct sun or a heat source.",
     editor: {
       labels: {
         title: "Title",
@@ -109,6 +118,7 @@ const PLANT_MANAGER_TEXT = {
         history_days: "History length",
         show_images: "Show photos",
         show_battery: "Show battery",
+        show_temperature: "Show temperature",
         show_history: "Show history",
         compact: "Compact mode",
       },
@@ -124,6 +134,9 @@ const PLANT_MANAGER_TEXT = {
 const plantManagerText = (language) =>
   (String(language || "fr").toLowerCase().startsWith("fr") ? PLANT_MANAGER_TEXT.fr : PLANT_MANAGER_TEXT.en);
 const plantManagerLanguage = (hass) => hass?.locale?.language || hass?.language;
+
+// "20,5" in French, "20.5" in English.
+const plantManagerNumber = (value, T) => Number(value).toLocaleString(T.locale, { maximumFractionDigits: 1 });
 
 const PLANT_MANAGER_STATUSES = {
   needs_water: { tone: "dry", icon: "mdi:water-alert-outline", order: 0 },
@@ -317,6 +330,7 @@ class PlantManagerCard extends HTMLElement {
     });
     const showImages = this.config.show_images !== false;
     const showBattery = this.config.show_battery !== false;
+    const showTemperature = this.config.show_temperature !== false;
     const showHistory = this.config.show_history === true;
     const historyDays = PLANT_MANAGER_HISTORY_DAYS.includes(Number(this.config.history_days))
       ? Number(this.config.history_days) : 1;
@@ -411,6 +425,18 @@ class PlantManagerCard extends HTMLElement {
       const battery = batteryValid
         ? `<span class="battery${batteryLow ? " low" : ""}"><ha-icon icon="mdi:${batteryLow ? "battery-alert" : "battery-medium"}"></ha-icon><span>${Math.round(batteryValue)}%</span></span>`
         : "";
+      const temperatureValue = Number(a.temperature);
+      const temperatureValid = a.temperature !== null && a.temperature !== undefined
+        && a.temperature !== "" && Number.isFinite(temperatureValue);
+      const temperatureTone = a.temperature_status === "too_cold" ? " cold"
+        : a.temperature_status === "too_hot" ? " hot" : "";
+      const temperatureChip = temperatureValid
+        ? `<span class="temperature${temperatureTone}" title="${esc(T.temperatureRange(plantManagerNumber(a.min_temperature, T), plantManagerNumber(a.max_temperature, T)))}"><ha-icon icon="mdi:thermometer"></ha-icon><span>${plantManagerNumber(temperatureValue, T)} °C</span></span>`
+        : "";
+      // The moisture advice comes first; the temperature one only when watering is fine.
+      const shownAdvice = tone === "good" && a.temperature_status === "too_cold" ? T.coldAdvice
+        : tone === "good" && a.temperature_status === "too_hot" ? T.hotAdvice : advice;
+      const extras = `${showBattery ? battery : ""}${showTemperature ? temperatureChip : ""}`;
       const historyEntity = a.moisture_entity;
       const moistureSource = historyEntity ? this._hass.states[historyEntity] : null;
       let updatedText = "";
@@ -490,10 +516,10 @@ class PlantManagerCard extends HTMLElement {
           <div class="progress-track" role="progressbar" aria-label="${T.soilMoisture}" aria-valuemin="0" aria-valuemax="100" ${valid ? `aria-valuenow="${Math.round(percentage)}"` : `aria-valuetext="${T.unavailable}"`}>
             <div class="progress-fill ${tone}" style="width:${percentage}%"></div>
           </div>
-          ${showBattery && battery ? `<div class="extras">${battery}</div>` : ""}
+          ${extras ? `<div class="extras">${extras}</div>` : ""}
           ${historyMarkup}
           ${wateringMarkup}
-          <div class="advice"><ha-icon icon="mdi:lightbulb-outline"></ha-icon><span>${advice}</span></div>
+          <div class="advice"><ha-icon icon="mdi:lightbulb-outline"></ha-icon><span>${shownAdvice}</span></div>
           ${updatedText}
         </div>
       </article>`;
@@ -704,6 +730,10 @@ class PlantManagerCard extends HTMLElement {
         .extras { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
         .battery { display: inline-flex; align-items: center; gap: 4px; color: var(--secondary-text-color); font-size: 11px; }
         .battery.low { color: var(--error-color, #c62828); font-weight: 700; }
+        .temperature { display: inline-flex; align-items: center; gap: 4px; color: var(--secondary-text-color); font-size: 11px; }
+        .temperature ha-icon { --mdc-icon-size: 14px; }
+        .temperature.cold { color: var(--info-color, #039be5); font-weight: 700; }
+        .temperature.hot { color: var(--error-color, #c62828); font-weight: 700; }
         .battery ha-icon { --mdc-icon-size: 14px; }
         .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 12px 30px; text-align: center; }
         .empty-icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 3px; border-radius: 18px; color: var(--success-color, #2e7d32); background: var(--secondary-background-color); }
@@ -755,7 +785,7 @@ const plantManagerCardSchema = (T) => {
     {
       type: "grid",
       name: "",
-      schema: ["show_images", "show_battery", "show_history", "compact"]
+      schema: ["show_images", "show_battery", "show_temperature", "show_history", "compact"]
         .map((name) => ({ name, selector: { boolean: {} } })),
     },
     { name: "history_days", selector: { select: { mode: "dropdown", options: options(T.editor.days) } } },
@@ -767,6 +797,7 @@ const PLANT_MANAGER_CARD_DEFAULTS = {
   tap_action: "more-info",
   show_images: true,
   show_battery: true,
+  show_temperature: true,
   show_history: false,
   compact: false,
   history_days: "1",

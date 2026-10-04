@@ -34,6 +34,11 @@ const PLANT_MANAGER_DETAIL_TEXT = {
     nextWatering: "Prochain arrosage",
     battery: "Batterie du capteur",
     batteryThreshold: (value) => `Seuil d'alerte : ${value}`,
+    temperature: "Température",
+    locale: "fr",
+    temperatureRange: (min, max) => `Conseillé : ${min}–${max} °C`,
+    coldAdvice: "Il fait trop froid pour cette plante : éloignez-la d’une fenêtre ou d’un courant d’air.",
+    hotAdvice: "Il fait trop chaud pour cette plante : éloignez-la du soleil direct ou d’une source de chaleur.",
     editor: {
       entity: "Plante",
       title: "Titre (facultatif)",
@@ -79,6 +84,11 @@ const PLANT_MANAGER_DETAIL_TEXT = {
     nextWatering: "Next watering",
     battery: "Sensor battery",
     batteryThreshold: (value) => `Alert threshold: ${value}`,
+    temperature: "Temperature",
+    locale: "en",
+    temperatureRange: (min, max) => `Recommended: ${min}–${max} °C`,
+    coldAdvice: "Too cold for this plant: move it away from a window or a draught.",
+    hotAdvice: "Too hot for this plant: move it away from direct sun or a heat source.",
     editor: {
       entity: "Plant",
       title: "Title (optional)",
@@ -100,6 +110,9 @@ const plantManagerDetailPageLanguage = () => (
   typeof document !== "undefined" ? document.documentElement?.lang : undefined
 );
 const plantManagerDetailCapitalize = (text) => text.replace(/^./, (c) => c.toUpperCase());
+
+// "20,5" in French, "20.5" in English.
+const plantManagerDetailNumber = (value, T) => Number(value).toLocaleString(T.locale, { maximumFractionDigits: 1 });
 
 const PLANT_MANAGER_DETAIL_STATUSES = {
   needs_water: ["dry", "mdi:water-alert-outline"],
@@ -239,10 +252,21 @@ class PlantManagerDetailCard extends HTMLElement {
     const [statusLabel, advice] = T.status[PLANT_MANAGER_DETAIL_STATUSES[statusKey] ? statusKey : "unknown"];
     // The species name is shown only when it adds something to the plant's name.
     const species = String(a.species || "").trim();
-    const speciesDescription = String(a.species_description || "").trim();
+    // OpenPlantbook's alias often repeats the name ("chlorophytum comosum"): skip it then.
+    const rawDescription = String(a.species_description || "").trim();
+    const speciesDescription = species.toLowerCase().includes(rawDescription.toLowerCase())
+      ? "" : rawDescription;
     const speciesLine = species && species.toLowerCase() !== String(this.config.title || name).toLowerCase()
       ? `<div class="species"><em>${esc(species)}</em>${speciesDescription ? ` · ${esc(speciesDescription)}` : ""}</div>`
       : "";
+    const temperature = Number(a.temperature);
+    const temperatureValid = a.temperature !== null && a.temperature !== undefined
+      && a.temperature !== "" && Number.isFinite(temperature);
+    const temperatureTone = a.temperature_status === "too_cold" ? "cold"
+      : a.temperature_status === "too_hot" ? "hot" : "";
+    // The moisture advice comes first; the temperature one only when watering is fine.
+    const shownAdvice = tone === "good" && temperatureTone === "cold" ? T.coldAdvice
+      : tone === "good" && temperatureTone === "hot" ? T.hotAdvice : advice;
     const watered = plantManagerDetailSince(a.last_watered, T);
     const nextWatering = plantManagerDetailUntil(a.next_watering, T);
     const imageUrl = String(a.image_url || "").trim();
@@ -360,12 +384,17 @@ class PlantManagerDetailCard extends HTMLElement {
           <div><span>${T.nextWatering}</span><strong>${nextWatering ? plantManagerDetailCapitalize(nextWatering) : "—"}</strong></div>
         </section>` : ""}
         <section class="history">${chart}</section>
+        ${a.temperature_entity ? `<section class="temperature-row">
+          <div class="temperature-icon ${temperatureTone}"><ha-icon icon="mdi:thermometer"></ha-icon></div>
+          <div class="battery-copy"><strong>${T.temperature}</strong><span>${T.temperatureRange(plantManagerDetailNumber(a.min_temperature, T), plantManagerDetailNumber(a.max_temperature, T))}</span></div>
+          <strong class="temperature-value ${temperatureTone}">${temperatureValid ? `${plantManagerDetailNumber(temperature, T)} °C` : T.unavailable}</strong>
+        </section>` : ""}
         ${a.battery_entity ? `<section class="battery-row">
           <div class="battery-icon"><ha-icon icon="${batteryLow ? "mdi:battery-alert" : "mdi:battery-medium"}"></ha-icon></div>
           <div class="battery-copy"><strong>${T.battery}</strong><span>${T.batteryThreshold(Number.isFinite(batteryThreshold) ? `${batteryThreshold} %` : "25 %")}</span></div>
           <strong class="battery-value ${batteryLow ? "low" : ""}">${batteryText}</strong>
         </section>` : ""}
-        <section class="advice"><ha-icon icon="mdi:lightbulb-outline"></ha-icon><span>${advice}</span></section>
+        <section class="advice"><ha-icon icon="mdi:lightbulb-outline"></ha-icon><span>${shownAdvice}</span></section>
       </ha-card>
       <style>
         :host{display:block}
@@ -404,7 +433,11 @@ class PlantManagerDetailCard extends HTMLElement {
         .threshold{stroke-width:1;stroke-dasharray:3 3;opacity:.7}
         .threshold.low{stroke:var(--error-color,#c62828)}.threshold.high{stroke:var(--warning-color,#b7791f)}
         .history-empty{color:var(--secondary-text-color);font-size:12px}
-        .battery-row{display:flex;align-items:center;gap:12px;padding:14px 18px;border-top:1px solid var(--divider-color)}
+        .battery-row,.temperature-row{display:flex;align-items:center;gap:12px;padding:14px 18px;border-top:1px solid var(--divider-color)}
+        .temperature-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--secondary-background-color)}
+        .temperature-icon ha-icon{--mdc-icon-size:22px}
+        .temperature-value{font-size:16px;font-variant-numeric:tabular-nums}
+        .cold{color:var(--info-color,#039be5)}.hot.temperature-value,.temperature-icon.hot{color:var(--error-color,#c62828)}
         .battery-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--secondary-background-color)}
         .battery-icon ha-icon{--mdc-icon-size:22px}
         .battery-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}

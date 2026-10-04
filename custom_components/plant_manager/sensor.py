@@ -8,7 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .alerts import parse_percentage, parse_reading
+from .alerts import parse_percentage, parse_reading, parse_temperature, parse_temperature_threshold
 from .const import (
     DOMAIN, CONF_PLANT_NAME, CONF_MOISTURE_ENTITY, CONF_BATTERY_ENTITY,
     CONF_LOW_THRESHOLD, CONF_HIGH_THRESHOLD, CONF_BATTERY_LOW_THRESHOLD,
@@ -16,6 +16,9 @@ from .const import (
     DEFAULT_LOW_THRESHOLD, DEFAULT_HIGH_THRESHOLD,
     DEFAULT_BATTERY_LOW_THRESHOLD, STATUS_NEEDS_WATER, STATUS_OK,
     STATUS_OPTIONS, STATUS_TOO_WET, signal_updated,
+    CONF_TEMPERATURE_ENTITY, CONF_MIN_TEMPERATURE, CONF_MAX_TEMPERATURE,
+    DEFAULT_MIN_TEMPERATURE, DEFAULT_MAX_TEMPERATURE,
+    TEMPERATURE_OK, TEMPERATURE_TOO_COLD, TEMPERATURE_TOO_HOT,
 )
 from .watering import WateringTracker
 
@@ -138,6 +141,24 @@ class PlantStatusSensor(_PlantSensor):
         )
         last_watered = _utc(self.tracker.last_watered if self.tracker else None)
         next_watering = _utc(self._next_watering())
+        temperature_entity = self.entry.data.get(CONF_TEMPERATURE_ENTITY)
+        state = self.hass.states.get(temperature_entity) if temperature_entity else None
+        temperature = parse_temperature(state.state) if state is not None else None
+        min_temperature = parse_temperature_threshold(
+            self.entry.options.get(CONF_MIN_TEMPERATURE, DEFAULT_MIN_TEMPERATURE),
+            DEFAULT_MIN_TEMPERATURE,
+        )
+        max_temperature = parse_temperature_threshold(
+            self.entry.options.get(CONF_MAX_TEMPERATURE, DEFAULT_MAX_TEMPERATURE),
+            DEFAULT_MAX_TEMPERATURE,
+        )
+        temperature_status = None
+        if temperature is not None:
+            temperature_status = (
+                TEMPERATURE_TOO_COLD if temperature < min_temperature
+                else TEMPERATURE_TOO_HOT if temperature > max_temperature
+                else TEMPERATURE_OK
+            )
         return {
             "plant_manager": True,
             "plant_name": self.entry.data.get(CONF_PLANT_NAME, self.entry.title),
@@ -154,24 +175,25 @@ class PlantStatusSensor(_PlantSensor):
             "species_description": self.entry.options.get(CONF_SPECIES_DESCRIPTION),
             "last_watered": last_watered.isoformat() if last_watered else None,
             "next_watering": next_watering.isoformat() if next_watering else None,
+            "temperature_entity": temperature_entity,
+            "temperature": temperature,
+            "min_temperature": min_temperature,
+            "max_temperature": max_temperature,
+            "temperature_status": temperature_status,
         }
 
     async def async_added_to_hass(self):
         from homeassistant.helpers.event import async_track_state_change_event
 
         await super().async_added_to_hass()
-        # The battery is not followed by the watering updates.
+        # The battery and temperature are not followed by the watering updates.
+        followed = [self.entry.data[CONF_MOISTURE_ENTITY]] + [
+            self.entry.data[key]
+            for key in (CONF_BATTERY_ENTITY, CONF_TEMPERATURE_ENTITY)
+            if self.entry.data.get(key)
+        ]
         self.async_on_remove(
-            async_track_state_change_event(
-                self.hass,
-                [self.entry.data[CONF_MOISTURE_ENTITY]]
-                + (
-                    [self.entry.data[CONF_BATTERY_ENTITY]]
-                    if self.entry.data.get(CONF_BATTERY_ENTITY)
-                    else []
-                ),
-                self._handle_state_change,
-            )
+            async_track_state_change_event(self.hass, followed, self._handle_state_change)
         )
 
     async def _handle_state_change(self, event):

@@ -60,3 +60,23 @@ ACTION_SNOOZE = "PLANT_MANAGER_SNOOZE"
 def signal_updated(entry_id: str) -> str:
     """Dispatcher signal sent when a plant's watering data changes."""
     return f"{DOMAIN}_{entry_id}_updated"
+
+# Temperature (°C), from a sensor of the same device as the soil moisture one.
+CONF_TEMPERATURE_ENTITY = "temperature_entity"
+CONF_MIN_TEMPERATURE = "min_temperature"
+CONF_MAX_TEMPERATURE = "max_temperature"
+CONF_TEMPERATURE_ALERTS = "temperature_alerts"
+DEFAULT_MIN_TEMPERATURE = 15
+DEFAULT_MAX_TEMPERATURE = 30
+DEFAULT_TEMPERATURE_ALERTS = True
+# Starting (min, max) temperatures of each plant profile.
+TEMPERATURE_PROFILES = {
+    "standard": (DEFAULT_MIN_TEMPERATURE, DEFAULT_MAX_TEMPERATURE),
+    "succulent": (10, 35),
+    "tropical": (18, 30),
+    "fern": (15, 27),
+    "orchid": (16, 30),
+}
+TEMPERATURE_TOO_COLD = "too_cold"
+TEMPERATURE_OK = "ok"
+TEMPERATURE_TOO_HOT = "too_hot"
