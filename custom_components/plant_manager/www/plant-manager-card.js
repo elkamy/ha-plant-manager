@@ -24,6 +24,7 @@ const PLANT_MANAGER_TEXT = {
     historyLabel: (days, trend) => `Historique de l'humidité sur ${days > 1 ? `${days} jours` : "24 heures"} : ${trend.toLocaleLowerCase("fr")}`,
     wateringHint: "Hausse notable détectée : arrosage possible (estimation).",
     notEnoughHistory: "Historique insuffisant pour afficher la tendance.",
+    loadingHistory: "Chargement de l'historique…",
     plant: "Plante",
     showDetails: (name) => `Afficher les détails de ${name}`,
     soilMoisture: "Humidité du sol",
@@ -91,6 +92,7 @@ const PLANT_MANAGER_TEXT = {
     historyLabel: (days, trend) => `Moisture history over ${days > 1 ? `${days} days` : "24 hours"}: ${trend.toLowerCase()}`,
     wateringHint: "Notable rise detected: possibly watered (estimate).",
     notEnoughHistory: "Not enough history to show the trend.",
+    loadingHistory: "Loading history…",
     plant: "Plant",
     showDetails: (name) => `Show details of ${name}`,
     soilMoisture: "Soil moisture",
@@ -527,6 +529,8 @@ class PlantManagerCard extends HTMLElement {
         </div>`;
       } else if (showHistory && Array.isArray(history)) {
         historyMarkup = `<div class="history history-empty">${T.notEnoughHistory}</div>`;
+      } else if (showHistory && historyEntity) {
+        historyMarkup = `<div class="history history-empty">${T.loadingHistory}</div>`;
       }
       const imageUrl = showImages ? safeImageUrl(a.image_url) : "";
       const image = imageUrl

@@ -25,6 +25,7 @@ const PLANT_MANAGER_DETAIL_TEXT = {
     min: (value) => `${value} % min.`,
     max: (value) => `${value} % max.`,
     noHistory: "Historique indisponible ou insuffisant.",
+    loadingHistory: "Chargement de l'historique…",
     historyHidden: "Historique masqué dans la configuration.",
     soilMoisture: "Humidité du sol",
     lowThreshold: (value) => `Seuil bas : ${value}`,
@@ -77,6 +78,7 @@ const PLANT_MANAGER_DETAIL_TEXT = {
     min: (value) => `${value}% min`,
     max: (value) => `${value}% max`,
     noHistory: "History unavailable or insufficient.",
+    loadingHistory: "Loading history…",
     historyHidden: "History hidden in the card settings.",
     soilMoisture: "Soil moisture",
     lowThreshold: (value) => `Low threshold: ${value}`,
@@ -354,7 +356,9 @@ class PlantManagerDetailCard extends HTMLElement {
     }
 
     const history = this._historyCache.key === historyKey ? this._historyCache.points : [];
-    let chart = `<div class="history-empty">${T.noHistory}</div>`;
+    // Until the first answer, say the history is coming rather than missing.
+    const historyLoading = this._historyCache.key !== historyKey;
+    let chart = `<div class="history-empty">${historyLoading ? T.loadingHistory : T.noHistory}</div>`;
     if (showHistory && history.length >= 2) {
       const min = Math.min(...history);
       const max = Math.max(...history);

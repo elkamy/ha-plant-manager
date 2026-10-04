@@ -752,3 +752,23 @@ test("clicking the bell toggles the switch without opening the plant", () => {
   assert.equal(calls[1][1], "turn_on");
   assert.equal(icon.attributes.icon, "mdi:bell");
 });
+
+test("says the history is loading until the websocket answers", async () => {
+  let answer;
+  const card = new PlantManagerCard();
+  card.setConfig({ show_history: true });
+  card.hass = {
+    states: {
+      "sensor.plant_status": plant("sensor.plant_status", "ok", {
+        plant_name: "Monstera",
+        moisture: 50,
+        moisture_entity: "sensor.monstera_moisture",
+      }),
+    },
+    callWS: () => new Promise((resolve) => { answer = resolve; }),
+  };
+  assert.match(card.shadowRoot.innerHTML, /Chargement de l'historique…/);
+  answer(wsHistory([]));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.shadowRoot.innerHTML, /Historique insuffisant pour afficher la tendance/);
+});

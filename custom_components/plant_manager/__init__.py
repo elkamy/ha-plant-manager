@@ -69,8 +69,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     photos = images_path(hass)
     await hass.async_add_executor_job(lambda: photos.mkdir(parents=True, exist_ok=True))
     await hass.http.async_register_static_paths([
+        # The cards are loaded with a versioned URL (see below), so browsers may
+        # cache them: without it, Firefox revalidates them on every load and they
+        # can arrive after the dashboard gave up waiting ("Erreur de configuration").
         *(
-            StaticPathConfig(url, str(www_path / filename), cache_headers=False)
+            StaticPathConfig(url, str(www_path / filename), cache_headers=True)
             for filename, url in cards
         ),
         # Photo names are unique, so browsers may cache them.
@@ -78,7 +81,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     ])
     # Bump the query version when changing card JavaScript to invalidate caches.
     for _filename, url in cards:
-        add_extra_js_url(hass, f"{url}?v=1.7.0")
+        add_extra_js_url(hass, f"{url}?v=1.7.1")
     hass.data.setdefault(DOMAIN, {})
     return True
 

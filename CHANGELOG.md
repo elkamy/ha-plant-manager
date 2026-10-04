@@ -1,5 +1,13 @@
 # Journal des modifications
 
+## [1.7.1] — 2026-10-04
+
+### Ajouté
+- « Chargement de l'historique… » s'affiche pendant le chargement de l'historique, au lieu de « Historique indisponible ».
+
+### Corrigé
+- Les cartes peuvent être gardées en cache par le navigateur (leur adresse change à chaque version) : elles ne sont plus revérifiées à chaque ouverture, ce qui pouvait, surtout dans Firefox, les faire arriver trop tard et afficher « Erreur de configuration » au chargement d'un tableau de bord.
+
 ## [1.7.0] — 2026-10-04
 
 ### Ajouté

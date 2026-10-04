@@ -326,3 +326,18 @@ test("shows the notifications bell in the header", () => {
   assert.match(off, /class="bell off"[^>]*title="Notifications coupées pour cette plante : cliquer pour les activer"/);
   assert.doesNotMatch(render({ "sensor.monstera_status": plant() }), /<button type="button" class="bell/);
 });
+
+test("says the history is loading until the websocket answers", async () => {
+  let answer;
+  const card = new DetailCard();
+  card.setConfig({ entity: "sensor.monstera_status" });
+  card.hass = {
+    states: { "sensor.monstera_status": plant("ok", { moisture: 50, moisture_entity: "sensor.monstera_moisture" }) },
+    callWS: () => new Promise((resolve) => { answer = resolve; }),
+  };
+  assert.match(card.shadowRoot.innerHTML, /Chargement de l'historique…/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /Historique indisponible/);
+  answer(wsHistory([]));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(card.shadowRoot.innerHTML, /Historique indisponible ou insuffisant/);
+});
