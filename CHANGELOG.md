@@ -1,5 +1,10 @@
 # Journal des modifications
 
+## Non publié
+
+### Modifié
+- Identité visuelle unifiée autour de l'emblème du bandeau (plante en pot sur fond vert sombre) : icône de l'intégration régénérée en PNG net à partir d'une source SVG unique (`docs/brand/plant-manager-icon.svg`), bandeau du README mis à jour (température, espèces, langues) et emblème dans l'en-tête de la carte liste.
+
 ## [1.6.0] — 2026-10-04
 
 > Après la mise à jour, redémarrez Home Assistant puis forcez le rechargement de l'interface (**Ctrl+Maj+R**, ou **Réinitialiser le cache du frontend** dans l'application mobile) : sans cela, les nouveaux champs des options peuvent s'afficher sous leur nom technique (`min_temperature`…) et les cartes rester dans leur ancienne version.

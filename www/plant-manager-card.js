@@ -138,6 +138,9 @@ const plantManagerLanguage = (hass) => hass?.locale?.language || hass?.language;
 // "20,5" in French, "20.5" in English.
 const plantManagerNumber = (value, T) => Number(value).toLocaleString(T.locale, { maximumFractionDigits: 1 });
 
+// The Plant Manager emblem, generated from docs/brand/plant-manager-icon.svg.
+const PLANT_MANAGER_EMBLEM = '<svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="pm-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#102d27"/><stop offset="1" stop-color="#1e5141"/></linearGradient><linearGradient id="pm-leaf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9f2a1"/><stop offset="1" stop-color="#55b879"/></linearGradient></defs><rect id="pm-tile" width="256" height="256" rx="56" fill="url(#pm-bg)"/><g id="pm-plant" transform="translate(26 27) scale(.73)" fill="url(#pm-leaf)" stroke="#d8f7cb" stroke-width="2"><path d="M112 212C18 176 4 96 18 24c74 12 132 65 94 188Z"/><path d="M113 214C91 128 111 55 180 12c35 70 10 145-67 202Z"/><path d="M109 214C162 154 224 147 280 171c-35 65-94 83-171 43Z"/><path d="M111 214C58 196 35 158 40 117c53 13 78 47 71 97Z"/><path d="M110 215L42 64M111 214L177 53M112 215L250 183" fill="none" stroke="#e7ffe0" stroke-width="4" stroke-linecap="round"/><path d="M62 224h100l-12 45H74Z" fill="#e7f2e8" stroke="#e7f2e8"/><path d="M71 238h82" fill="none" stroke="#4b8a68" stroke-width="4" stroke-linecap="round"/></g></svg>';
+
 const PLANT_MANAGER_STATUSES = {
   needs_water: { tone: "dry", icon: "mdi:water-alert-outline", order: 0 },
   too_wet: { tone: "wet", icon: "mdi:water", order: 1 },
@@ -547,7 +550,7 @@ class PlantManagerCard extends HTMLElement {
     this._root.innerHTML = `
       <ha-card class="${compact ? "compact" : ""}">
         <div class="card-header">
-          <div class="header-icon"><ha-icon icon="mdi:leaf"></ha-icon></div>
+          <div class="header-icon">${PLANT_MANAGER_EMBLEM}</div>
           <div class="header-text">
             <div class="title">${esc(this.config.title || T.defaultTitle)}</div>
             ${summary}
@@ -577,10 +580,8 @@ class PlantManagerCard extends HTMLElement {
           height: 46px;
           flex: 0 0 46px;
           border-radius: 15px;
-          color: var(--success-color, #2e7d32);
-          background: color-mix(in srgb, var(--success-color, #2e7d32) 12%, var(--card-background-color));
         }
-        .header-icon ha-icon { --mdc-icon-size: 26px; }
+        .header-icon svg { display: block; width: 46px; height: 46px; }
         .header-text { min-width: 0; }
         .title {
           color: var(--primary-text-color);
@@ -637,7 +638,7 @@ class PlantManagerCard extends HTMLElement {
         .compact .overview-count { font-size: 17px; }
         .compact .card-header { gap: 9px; padding: 12px 14px 10px; }
         .compact .header-icon { width: 36px; height: 36px; flex-basis: 36px; border-radius: 12px; }
-        .compact .header-icon ha-icon { --mdc-icon-size: 21px; }
+        .compact .header-icon svg { width: 36px; height: 36px; }
         .compact .title { font-size: 17px; }
         .compact .content { padding: 0 10px 4px; }
         .compact .plant { gap: 10px; padding: 8px 3px; }

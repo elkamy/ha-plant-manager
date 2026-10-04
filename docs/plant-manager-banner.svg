@@ -1,12 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
-  <title id="title">Plant Manager for Home Assistant</title>
-  <desc id="desc">A leafy green banner for managing houseplants, soil moisture and notifications in Home Assistant.</desc>
+  <title id="title">Plant Manager pour Home Assistant</title>
+  <desc id="desc">Bandeau Plant Manager : l'emblème de l'intégration et ses fonctions.</desc>
+  <!-- The emblem comes from docs/brand/plant-manager-icon.svg: edit it there. -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#102d27"/>
       <stop offset="1" stop-color="#1e5141"/>
     </linearGradient>
-    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="pm-leaf" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#b9f2a1"/>
       <stop offset="1" stop-color="#55b879"/>
     </linearGradient>
@@ -14,7 +15,7 @@
   <rect width="1200" height="320" rx="28" fill="url(#bg)"/>
   <circle cx="1050" cy="155" r="175" fill="#ffffff" opacity=".045"/>
   <circle cx="1100" cy="280" r="120" fill="#ffffff" opacity=".04"/>
-  <g transform="translate(850 45)" fill="url(#leaf)" stroke="#d8f7cb" stroke-width="2">
+  <g transform="translate(850 45)" fill="url(#pm-leaf)" stroke="#d8f7cb" stroke-width="2">
     <path d="M112 212C18 176 4 96 18 24c74 12 132 65 94 188Z"/>
     <path d="M113 214C91 128 111 55 180 12c35 70 10 145-67 202Z"/>
     <path d="M109 214C162 154 224 147 280 171c-35 65-94 83-171 43Z"/>
@@ -27,10 +28,11 @@
     <text x="72" y="82" font-size="22" font-weight="700" letter-spacing="4" opacity=".85">HOME ASSISTANT · CUSTOM INTEGRATION</text>
     <text x="68" y="160" font-size="64" font-weight="750" letter-spacing="-1.5">Plant Manager</text>
     <text x="72" y="207" font-size="25" opacity=".92">Prenez soin de vos plantes, simplement.</text>
-    <text x="72" y="250" font-size="18" opacity=".72">Humidité · Arrosage · Batterie · Historique · Notifications</text>
+    <text x="72" y="250" font-size="18" opacity=".72">Humidité · Arrosage · Température · Espèces · Notifications</text>
   </g>
-  <g transform="translate(72 274)" fill="#b9f2a1">
-    <circle cx="5" cy="0" r="5"/><text x="20" y="6" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" font-weight="600">Open source</text>
-    <circle cx="160" cy="0" r="5"/><text x="175" y="6" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" font-weight="600">Compatible HACS</text>
+  <g transform="translate(72 274)" fill="#b9f2a1" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" font-weight="600">
+    <circle cx="5" cy="0" r="5"/><text x="20" y="6">Open source</text>
+    <circle cx="160" cy="0" r="5"/><text x="175" y="6">Compatible HACS</text>
+    <circle cx="350" cy="0" r="5"/><text x="365" y="6">Français · English</text>
   </g>
 </svg>
