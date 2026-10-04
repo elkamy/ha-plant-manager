@@ -128,3 +128,23 @@ async def test_cold_plant_alert_and_temperature_attributes(hass: HomeAssistant) 
     await hass.async_block_till_done()
 
     assert [call.data["title"] for call in calls] == ["🥶 Trop froid — Ficus"]
+
+
+async def test_notifications_switch_turns_the_option_on_and_off(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    switch = _entity(hass, entry, "notifications")
+    status = _entity(hass, entry, "status")
+    assert hass.states.get(switch).state == "on"
+    assert hass.states.get(status).attributes["notifications_entity"] == switch
+
+    await hass.services.async_call("switch", "turn_off", {"entity_id": switch}, blocking=True)
+    await hass.async_block_till_done()
+    assert entry.options["notifications_enabled"] is False
+    assert hass.states.get(switch).state == "off"
+    assert hass.states.get(status).attributes["notifications_enabled"] is False
+    # The other options are kept.
+    assert entry.options["low_threshold"] == 30
+
+    await hass.services.async_call("switch", "turn_on", {"entity_id": switch}, blocking=True)
+    await hass.async_block_till_done()
+    assert entry.options["notifications_enabled"] is True

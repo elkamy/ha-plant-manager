@@ -1,5 +1,11 @@
 # Journal des modifications
 
+## [1.7.0] — 2026-10-04
+
+### Ajouté
+- Une cloche sur chaque plante, dans la liste et dans la fiche : un clic active ou coupe ses notifications, sans ouvrir ses détails.
+- Interrupteur « Notifications » par plante (`switch.<plante>_notifications`), qui commande l'option « Notifications activées » et peut servir dans les automatisations ; attributs `notifications_enabled` et `notifications_entity` sur le statut.
+
 ## [1.6.1] — 2026-10-04
 
 ### Modifié

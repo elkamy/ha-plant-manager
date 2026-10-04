@@ -77,6 +77,8 @@ SENSOR_MODULE = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = SENSOR_MODULE
 spec.loader.exec_module(SENSOR_MODULE)
 PlantStatusSensor = SENSOR_MODULE.PlantStatusSensor
+# The switch lookup needs the entity registry; tests_ha/ covers it in Home Assistant.
+PlantStatusSensor._notifications_entity = lambda self: "switch.pachira_notifications"
 
 
 class FakeState:
@@ -278,6 +280,15 @@ class TemperatureAttributeTests(unittest.TestCase):
         attributes = PlantStatusSensor(FakeEntry(50).hass, FakeEntry(50)).extra_state_attributes
         self.assertIsNone(attributes["temperature_entity"])
         self.assertIsNone(attributes["temperature_status"])
+
+
+class NotificationAttributeTests(unittest.TestCase):
+    def test_bell_attributes_follow_the_option(self):
+        attributes = PlantStatusSensor(FakeEntry(50).hass, FakeEntry(50)).extra_state_attributes
+        self.assertTrue(attributes["notifications_enabled"])
+        self.assertEqual(attributes["notifications_entity"], "switch.pachira_notifications")
+        entry = FakeEntry(50, {"notifications_enabled": False})
+        self.assertFalse(PlantStatusSensor(entry.hass, entry).extra_state_attributes["notifications_enabled"])
 
 
 class TranslationTests(unittest.TestCase):

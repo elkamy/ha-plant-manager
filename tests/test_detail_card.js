@@ -310,3 +310,19 @@ test("skips a species description that repeats the name", () => {
   });
   assert.match(html, /<div class="species"><em>Chlorophytum comosum &#39;Variegatum&#39;<\/em><\/div>/);
 });
+
+test("shows the notifications bell in the header", () => {
+  const on = render({
+    "sensor.monstera_status": plant("ok", {
+      notifications_entity: "switch.monstera_notifications", notifications_enabled: true,
+    }),
+  });
+  assert.match(on, /<button type="button" class="bell" data-switch="switch\.monstera_notifications" aria-pressed="true"/);
+  const off = render({
+    "sensor.monstera_status": plant("ok", {
+      notifications_entity: "switch.monstera_notifications", notifications_enabled: false,
+    }),
+  });
+  assert.match(off, /class="bell off"[^>]*title="Notifications coupées pour cette plante : cliquer pour les activer"/);
+  assert.doesNotMatch(render({ "sensor.monstera_status": plant() }), /<button type="button" class="bell/);
+});

@@ -20,7 +20,7 @@ body:
     id: integration-version
     attributes:
       label: Version de Plant Manager
-      placeholder: "1.6.1"
+      placeholder: "1.7.0"
     validations:
       required: true
   - type: dropdown

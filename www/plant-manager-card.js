@@ -40,6 +40,8 @@ const PLANT_MANAGER_TEXT = {
     emptyTitle: "Aucune plante pour le moment",
     emptyText: "Ajoutez une plante dans Plant Manager pour commencer le suivi.",
     stubTitle: "Mes plantes",
+    bellOn: "Notifications activées pour cette plante : cliquer pour les couper",
+    bellOff: "Notifications coupées pour cette plante : cliquer pour les activer",
     locale: "fr",
     temperatureRange: (min, max) => `Conseillé : ${min}–${max} °C`,
     coldAdvice: "Il fait trop froid pour cette plante : éloignez-la d’une fenêtre ou d’un courant d’air.",
@@ -105,6 +107,8 @@ const PLANT_MANAGER_TEXT = {
     emptyTitle: "No plants yet",
     emptyText: "Add a plant in Plant Manager to start tracking it.",
     stubTitle: "My plants",
+    bellOn: "Notifications on for this plant: click to turn them off",
+    bellOff: "Notifications off for this plant: click to turn them on",
     locale: "en",
     temperatureRange: (min, max) => `Recommended: ${min}–${max} °C`,
     coldAdvice: "Too cold for this plant: move it away from a window or a draught.",
@@ -140,6 +144,13 @@ const plantManagerNumber = (value, T) => Number(value).toLocaleString(T.locale, 
 
 // The Plant Manager emblem, generated from docs/brand/plant-manager-icon.svg.
 const PLANT_MANAGER_EMBLEM = '<svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="pm-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#102d27"/><stop offset="1" stop-color="#1e5141"/></linearGradient><linearGradient id="pm-pot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e7f2e8"/><stop offset="1" stop-color="#cfe3d4"/></linearGradient><linearGradient id="pm-drop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fd3f7"/><stop offset="1" stop-color="#2e8fd8"/></linearGradient><linearGradient id="pm-leaf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9f2a1"/><stop offset="1" stop-color="#55b879"/></linearGradient></defs><rect id="pm-tile" width="256" height="256" rx="56" fill="url(#pm-bg)"/><g id="pm-plant" transform="translate(20.3 -15.9) scale(.795)" fill="url(#pm-leaf)" stroke="#d8f7cb" stroke-width="2"><g transform="translate(111 214) scale(.8) translate(-111 -214)"><path d="M112 212C18 176 4 96 18 24c74 12 132 65 94 188Z"/><path d="M112.0 212.0C87.9 143.6 57.9 84.9 30.9 43.0" fill="none" stroke="#e7ffe0" stroke-width="3.5" stroke-linecap="round" opacity=".9"/><path d="M113 214C91 128 111 55 180 12c35 70 10 145-67 202Z"/><path d="M113.0 214.0C136.7 152.5 156.6 89.2 172.5 36.7" fill="none" stroke="#e7ffe0" stroke-width="3.5" stroke-linecap="round" opacity=".9"/><path d="M109 214C162 154 224 147 280 171c-35 65-94 83-171 43Z"/><path d="M109.0 214.0C164.9 205.4 217.5 195.0 260.0 179.2" fill="none" stroke="#e7ffe0" stroke-width="3.5" stroke-linecap="round" opacity=".9"/><path d="M111 214C58 196 35 158 40 117c53 13 78 47 71 97Z"/><path d="M111.0 214.0C91.2 184.8 70.7 154.0 50.1 128.8" fill="none" stroke="#e7ffe0" stroke-width="3.5" stroke-linecap="round" opacity=".9"/></g><g stroke="none"><path d="M60 228H164L152 304Q150 312 142 312H82Q74 312 72 304Z" fill="url(#pm-pot)"/><path d="M61 233H163L162 241H62Z" fill="#a9cbb2" opacity=".55"/><rect x="50" y="212" width="124" height="22" rx="7" fill="#f4faf4"/></g></g><g id="pm-drop-mark"><g transform="translate(92 190)"><path d="M0-20C7.5-9.5 13.5-2.5 13.5 5.5A13.5 13.5 0 0 1-13.5 5.5C-13.5-2.5-7.5-9.5 0-20Z" fill="url(#pm-drop)"/><ellipse cx="-4.5" cy="4" rx="3" ry="4.8" fill="#ffffff" opacity=".6"/></g></g></svg>';
+
+const plantManagerBell = (attributes, T, esc) => {
+  if (!attributes.notifications_entity) return "";
+  const enabled = attributes.notifications_enabled !== false;
+  const label = enabled ? T.bellOn : T.bellOff;
+  return `<button type="button" class="bell${enabled ? "" : " off"}" data-switch="${esc(attributes.notifications_entity)}" aria-pressed="${enabled}" title="${esc(label)}" aria-label="${esc(label)}"><ha-icon icon="mdi:${enabled ? "bell" : "bell-off"}"></ha-icon></button>`;
+};
 
 const PLANT_MANAGER_STATUSES = {
   needs_water: { tone: "dry", icon: "mdi:water-alert-outline", order: 0 },
@@ -278,6 +289,23 @@ class PlantManagerCard extends HTMLElement {
 
   getCardSize() {
     return 4;
+  }
+
+  _bindBells() {
+    this._root.querySelectorAll(".bell").forEach((bell) => {
+      bell.addEventListener("click", (event) => {
+        // The bell must not open the plant's details as a row click does.
+        event.stopPropagation();
+        const enabled = bell.getAttribute("aria-pressed") === "true";
+        bell.setAttribute("aria-pressed", String(!enabled));
+        bell.classList.toggle("off", enabled);
+        bell.querySelector("ha-icon")?.setAttribute("icon", enabled ? "mdi:bell-off" : "mdi:bell");
+        this._hass.callService("switch", enabled ? "turn_off" : "turn_on", {
+          entity_id: bell.dataset.switch,
+        });
+      });
+      bell.addEventListener("keydown", (event) => event.stopPropagation());
+    });
   }
 
   get _root() {
@@ -510,7 +538,10 @@ class PlantManagerCard extends HTMLElement {
         <div class="details">
           <div class="plant-heading">
             <div class="name" title="${esc(a.plant_name || plant.entity_id)}">${esc(a.plant_name || plant.entity_id)}</div>
-            <span class="status ${tone}"><ha-icon icon="${icon}"></ha-icon>${label}</span>
+            <div class="heading-end">
+              <span class="status ${tone}"><ha-icon icon="${icon}"></ha-icon>${label}</span>
+              ${plantManagerBell(a, T, esc)}
+            </div>
           </div>
           <div class="moisture-line">
             <span class="moisture-label"><ha-icon icon="mdi:water-percent"></ha-icon> ${T.soilMoisture}</span>
@@ -728,6 +759,12 @@ class PlantManagerCard extends HTMLElement {
         .watering { display: flex; align-items: center; gap: 5px; margin-top: 8px; color: var(--secondary-text-color); font-size: 11px; }
         .watering ha-icon { --mdc-icon-size: 14px; flex: 0 0 auto; color: var(--info-color, var(--primary-color)); }
         .watering span::first-letter { text-transform: uppercase; }
+        .heading-end { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+        .bell { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; padding: 0; border: none; border-radius: 50%; background: transparent; color: var(--primary-color); cursor: pointer; }
+        .bell:hover { background: var(--secondary-background-color); }
+        .bell:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 1px; }
+        .bell.off { color: var(--disabled-text-color, var(--secondary-text-color)); }
+        .bell ha-icon { --mdc-icon-size: 18px; }
         .extras { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
         .battery { display: inline-flex; align-items: center; gap: 4px; color: var(--secondary-text-color); font-size: 11px; }
         .battery.low { color: var(--error-color, #c62828); font-weight: 700; }
@@ -751,6 +788,7 @@ class PlantManagerCard extends HTMLElement {
           .status { padding: 4px 7px; }
         }
       </style>`;
+    this._bindBells();
     if (tapAction !== "none") {
       this._root.querySelectorAll(".plant[role=button]").forEach((row) => {
         const showDetails = () => {

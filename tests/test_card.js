@@ -701,3 +701,54 @@ test("can hide the temperature", () => {
   }, { show_temperature: false });
   assert.doesNotMatch(html, /class="temperature/);
 });
+
+test("shows a bell reflecting the plant's notifications", () => {
+  const html = renderCard({
+    "sensor.on": plant("sensor.on", "ok", {
+      plant_name: "Ficus", moisture: 50,
+      notifications_entity: "switch.ficus_notifications", notifications_enabled: true,
+    }),
+    "sensor.off": plant("sensor.off", "ok", {
+      plant_name: "Kentia", moisture: 50,
+      notifications_entity: "switch.kentia_notifications", notifications_enabled: false,
+    }),
+    "sensor.none": plant("sensor.none", "ok", { plant_name: "Pachira", moisture: 50 }),
+  });
+  assert.match(html, /class="bell" data-switch="switch\.ficus_notifications" aria-pressed="true"[^>]*><ha-icon icon="mdi:bell">/);
+  assert.match(html, /class="bell off" data-switch="switch\.kentia_notifications" aria-pressed="false"[^>]*><ha-icon icon="mdi:bell-off">/);
+  assert.match(html, /cliquer pour les couper/);
+  assert.equal((html.match(/<button type="button" class="bell/g) || []).length, 2);
+});
+
+test("clicking the bell toggles the switch without opening the plant", () => {
+  const calls = [];
+  const card = new PlantManagerCard();
+  card.setConfig({});
+  card.hass = { states: {}, callService: (...args) => calls.push(args) };
+  const handlers = {};
+  const attributes = { "aria-pressed": "true" };
+  const icon = { attributes: { icon: "mdi:bell" }, setAttribute(name, value) { this.attributes[name] = value; } };
+  const classes = new Set();
+  const bell = {
+    dataset: { switch: "switch.ficus_notifications" },
+    getAttribute: (name) => attributes[name],
+    setAttribute: (name, value) => { attributes[name] = value; },
+    classList: { toggle: (name, on) => (on ? classes.add(name) : classes.delete(name)) },
+    querySelector: () => icon,
+    addEventListener: (type, handler) => { handlers[type] = handler; },
+  };
+  card.shadowRoot.querySelectorAll = () => [bell];
+  card._bindBells();
+
+  let stopped = false;
+  handlers.click({ stopPropagation: () => { stopped = true; } });
+  assert.ok(stopped);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [["switch", "turn_off", { entity_id: "switch.ficus_notifications" }]]);
+  assert.equal(attributes["aria-pressed"], "false");
+  assert.equal(icon.attributes.icon, "mdi:bell-off");
+  assert.ok(classes.has("off"));
+
+  handlers.click({ stopPropagation() {} });
+  assert.equal(calls[1][1], "turn_on");
+  assert.equal(icon.attributes.icon, "mdi:bell");
+});

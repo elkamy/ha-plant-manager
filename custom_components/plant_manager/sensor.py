@@ -19,6 +19,7 @@ from .const import (
     CONF_TEMPERATURE_ENTITY, CONF_MIN_TEMPERATURE, CONF_MAX_TEMPERATURE,
     DEFAULT_MIN_TEMPERATURE, DEFAULT_MAX_TEMPERATURE,
     TEMPERATURE_OK, TEMPERATURE_TOO_COLD, TEMPERATURE_TOO_HOT,
+    CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED,
 )
 from .watering import WateringTracker
 
@@ -180,7 +181,19 @@ class PlantStatusSensor(_PlantSensor):
             "min_temperature": min_temperature,
             "max_temperature": max_temperature,
             "temperature_status": temperature_status,
+            "notifications_enabled": bool(
+                self.entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED)
+            ),
+            # The cards' bell toggles this switch.
+            "notifications_entity": self._notifications_entity(),
         }
+
+    def _notifications_entity(self) -> str | None:
+        from homeassistant.helpers import entity_registry as er
+
+        return er.async_get(self.hass).async_get_entity_id(
+            "switch", DOMAIN, f"{self.entry.entry_id}_notifications"
+        )
 
     async def async_added_to_hass(self):
         from homeassistant.helpers.event import async_track_state_change_event

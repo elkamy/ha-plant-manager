@@ -135,6 +135,11 @@
       "watered": {
         "name": "Mark as watered"
       }
+    },
+    "switch": {
+      "notifications": {
+        "name": "Notifications"
+      }
     }
   },
   "selector": {

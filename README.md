@@ -42,7 +42,7 @@ Plant Manager est une intégration personnalisée Home Assistant pour gérer des
 - Suivi de la température de la sonde, avec seuils par type de plante ou par espèce (OpenPlantbook) et alertes « trop froid » ou « trop chaud ».
 - Notifications actionnables sur l'application mobile (« C'est arrosé », « Rappeler dans 2 h »), rappels tant que la plante reste sèche et heures calmes.
 - Notifications vers les services `notify.*` et vers les entités de notification.
-- Activation/désactivation des notifications indépendamment pour chaque plante.
+- Activation/désactivation des notifications indépendamment pour chaque plante, d'un clic sur la cloche des cartes.
 - Carte Lovelace avec tri par nom, humidité ou statut ; filtres par état ; résumé visuel et mode compact.
 - Fiche détaillée par plante.
 - Éditeur visuel pour les deux cartes.
@@ -114,13 +114,14 @@ Les seuils d'OpenPlantbook supposent une sonde de type Mi Flora : selon votre ca
 
 ## Suivi de l'arrosage
 
-Chaque plante dispose de trois entités supplémentaires (Home Assistant peut préfixer leur identifiant par la pièce, par exemple `sensor.salon_kentia_dernier_arrosage`) :
+Chaque plante dispose de quatre entités supplémentaires (Home Assistant peut préfixer leur identifiant par la pièce, par exemple `sensor.salon_kentia_dernier_arrosage`) :
 
 | Entité | Rôle |
 | --- | --- |
 | **Dernier arrosage** (`sensor.<plante>_dernier_arrosage`) | Date du dernier arrosage, détecté quand l'humidité monte d'au moins 15 points par rapport au minimum des 3 dernières heures et que la mesure suivante le confirme (un pic isolé du capteur est ignoré). |
 | **Prochain arrosage** (`sensor.<plante>_prochain_arrosage`) | Estimation de la date à laquelle l'humidité atteindra le seuil d'arrosage, d'après la vitesse de dessèchement mesurée depuis le dernier arrosage. Inconnue tant qu'il n'y a pas au moins 6 h de mesures ou si la plante ne sèche pas. |
 | **Marquer comme arrosée** (`button.<plante>_marquer_comme_arrosee`) | Enregistre un arrosage que la sonde n'a pas vu et arrête les rappels. |
+| **Notifications** (`switch.<plante>_notifications`) | Active ou coupe toutes les notifications de la plante (même réglage que l'option « Notifications activées »). C'est l'interrupteur de la cloche des cartes, utilisable aussi dans vos automatisations. |
 
 Sur l'application mobile Home Assistant (services `notify.mobile_app_…`), l'alerte d'arrosage propose deux boutons : **C'est arrosé** (même effet que le bouton ci-dessus) et **Rappeler dans 2 h**. Les autres destinataires reçoivent la notification sans boutons.
 
@@ -160,6 +161,7 @@ Attributs disponibles pour vos automatisations et modèles :
 | `temperature`, `temperature_entity` | Température validée (°C) et capteur utilisé, ou `null`. |
 | `min_temperature`, `max_temperature` | Températures conseillées. |
 | `temperature_status` | `too_cold`, `ok`, `too_hot`, ou `null` sans mesure. |
+| `notifications_enabled`, `notifications_entity` | Notifications activées ou non, et interrupteur qui les commande. |
 | `plant_manager` | Toujours `true` ; permet aux cartes de retrouver les plantes. |
 
 Exemple de déclencheur d'automatisation :
@@ -174,6 +176,8 @@ trigger:
 ## Cartes Lovelace
 
 L'intégration enregistre automatiquement le JavaScript des cartes au démarrage. Après une mise à jour, redémarrez Home Assistant puis forcez le rechargement du tableau de bord (**Ctrl+Maj+R** dans le navigateur ; dans l'application mobile, **Paramètres de l'application → Débogage → Réinitialiser le cache du frontend**) : sans cela, le navigateur peut continuer à utiliser les anciennes cartes, et les nouveaux champs des options s'afficher sous leur nom technique (par exemple `quiet_start`). Une ancienne ressource manuelle `/local/plant-manager-card.js` peut être supprimée si elle est encore configurée.
+
+Chaque plante affiche une **cloche** : un clic active ou coupe ses notifications (cloche barrée quand elles sont coupées), sans ouvrir ses détails.
 
 Les deux cartes apparaissent dans le sélecteur de cartes (**Ajouter une carte → Plant Manager**) et se configurent avec l'éditeur visuel ou en YAML. Elles s'affichent en français ou en anglais selon la langue de votre profil Home Assistant. Dans un tableau de bord en sections, la liste occupe toute la largeur et la fiche détaillée la moitié par défaut.
 

@@ -33,6 +33,8 @@ const PLANT_MANAGER_DETAIL_TEXT = {
     lastWatered: "Dernier arrosage",
     nextWatering: "Prochain arrosage",
     battery: "Batterie du capteur",
+    bellOn: "Notifications activées pour cette plante : cliquer pour les couper",
+    bellOff: "Notifications coupées pour cette plante : cliquer pour les activer",
     batteryThreshold: (value) => `Seuil d'alerte : ${value}`,
     temperature: "Température",
     locale: "fr",
@@ -83,6 +85,8 @@ const PLANT_MANAGER_DETAIL_TEXT = {
     lastWatered: "Last watered",
     nextWatering: "Next watering",
     battery: "Sensor battery",
+    bellOn: "Notifications on for this plant: click to turn them off",
+    bellOff: "Notifications off for this plant: click to turn them on",
     batteryThreshold: (value) => `Alert threshold: ${value}`,
     temperature: "Temperature",
     locale: "en",
@@ -113,6 +117,13 @@ const plantManagerDetailCapitalize = (text) => text.replace(/^./, (c) => c.toUpp
 
 // "20,5" in French, "20.5" in English.
 const plantManagerDetailNumber = (value, T) => Number(value).toLocaleString(T.locale, { maximumFractionDigits: 1 });
+
+const plantManagerDetailBell = (attributes, T, esc) => {
+  if (!attributes.notifications_entity) return "";
+  const enabled = attributes.notifications_enabled !== false;
+  const label = enabled ? T.bellOn : T.bellOff;
+  return `<button type="button" class="bell${enabled ? "" : " off"}" data-switch="${esc(attributes.notifications_entity)}" aria-pressed="${enabled}" title="${esc(label)}" aria-label="${esc(label)}"><ha-icon icon="mdi:${enabled ? "bell" : "bell-off"}"></ha-icon></button>`;
+};
 
 const PLANT_MANAGER_DETAIL_STATUSES = {
   needs_water: ["dry", "mdi:water-alert-outline"],
@@ -217,6 +228,23 @@ class PlantManagerDetailCard extends HTMLElement {
 
   getCardSize() {
     return 4;
+  }
+
+  _bindBells() {
+    this._root.querySelectorAll(".bell").forEach((bell) => {
+      bell.addEventListener("click", (event) => {
+        // The bell must not open the plant's details as a row click does.
+        event.stopPropagation();
+        const enabled = bell.getAttribute("aria-pressed") === "true";
+        bell.setAttribute("aria-pressed", String(!enabled));
+        bell.classList.toggle("off", enabled);
+        bell.querySelector("ha-icon")?.setAttribute("icon", enabled ? "mdi:bell-off" : "mdi:bell");
+        this._hass.callService("switch", enabled ? "turn_off" : "turn_on", {
+          entity_id: bell.dataset.switch,
+        });
+      });
+      bell.addEventListener("keydown", (event) => event.stopPropagation());
+    });
   }
 
   get _root() {
@@ -370,6 +398,7 @@ class PlantManagerDetailCard extends HTMLElement {
         <header>
           ${safeImage ? `<img src="${esc(safeImage)}" alt="${esc(name)}" />` : '<div class="plant-icon"><ha-icon icon="mdi:flower"></ha-icon></div>'}
           <div class="heading"><h2>${esc(this.config.title || name)}</h2>${speciesLine}<span class="status ${tone}"><ha-icon icon="${statusIcon}"></ha-icon>${statusLabel}</span></div>
+          ${plantManagerDetailBell(a, T, esc)}
         </header>
         <section class="metric">
           <div class="metric-heading"><span><ha-icon icon="mdi:water-percent"></ha-icon> ${T.soilMoisture}</span><strong>${moistureText}</strong></div>
@@ -404,6 +433,12 @@ class PlantManagerDetailCard extends HTMLElement {
         .plant-icon{display:grid;place-items:center;color:var(--success-color,var(--primary-color))}
         .plant-icon ha-icon{--mdc-icon-size:38px}
         .heading{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+        header .bell { margin-left: auto; align-self: flex-start; }
+        .bell { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; padding: 0; border: none; border-radius: 50%; background: transparent; color: var(--primary-color); cursor: pointer; }
+        .bell:hover { background: var(--secondary-background-color); }
+        .bell:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 1px; }
+        .bell.off { color: var(--disabled-text-color, var(--secondary-text-color)); }
+        .bell ha-icon { --mdc-icon-size: 18px; }
         .species{margin-top:-4px;color:var(--secondary-text-color);font-size:12px;line-height:1.35}.species em{font-style:italic}
         h2{margin:0;font-size:20px;line-height:1.25;font-weight:700;overflow-wrap:anywhere}
         .status{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700}
@@ -446,8 +481,10 @@ class PlantManagerDetailCard extends HTMLElement {
         .advice{display:flex;align-items:flex-start;gap:8px;margin:0 18px 18px;padding:12px;border-radius:12px;background:var(--secondary-background-color);color:var(--secondary-text-color);font-size:12px;line-height:1.45}
         .advice ha-icon{--mdc-icon-size:17px;flex:0 0 auto;color:var(--primary-color)}
         .empty{padding:20px;color:var(--secondary-text-color)}
+        .heading{flex:1}
         @media(max-width:420px){header{padding:14px}.metric,.history,.battery-row{padding:12px 14px}header img,.plant-icon{width:60px;height:60px;flex-basis:60px}h2{font-size:18px}}
       </style>`;
+    this._bindBells();
   }
 }
 
