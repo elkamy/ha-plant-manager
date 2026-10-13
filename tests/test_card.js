@@ -772,3 +772,36 @@ test("says the history is loading until the websocket answers", async () => {
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(card.shadowRoot.innerHTML, /Historique insuffisant pour afficher la tendance/);
 });
+
+test("registers again on a registry that replaced the native one", async () => {
+  // Home Assistant's scoped registry polyfill can replace customElements after
+  // the card ran; Lovelace then asks the new registry.
+  const native = new Map();
+  const ready = {};
+  const resolved = {};
+  const sandbox = {
+    HTMLElement: FakeHTMLElement,
+    customElements: {
+      define: (name, component) => native.set(name, component),
+      get: (name) => native.get(name),
+      whenDefined: (name) => {
+        ready[name] ||= new Promise((resolve) => { resolved[name] = resolve; });
+        return ready[name];
+      },
+    },
+    window: { customCards: [] },
+  };
+  vm.runInNewContext(
+    fs.readFileSync("custom_components/plant_manager/www/plant-manager-card.js", "utf8"),
+    sandbox,
+  );
+  const scoped = new Map();
+  sandbox.customElements = {
+    define: (name, component) => scoped.set(name, component),
+    get: (name) => scoped.get(name),
+  };
+  resolved["home-assistant"]();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(scoped.get("plant-manager-card"), native.get("plant-manager-card"));
+  assert.equal(scoped.get("plant-manager-card-editor"), native.get("plant-manager-card-editor"));
+});

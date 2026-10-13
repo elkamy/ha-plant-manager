@@ -240,6 +240,22 @@ const plantManagerDownsample = (values, timestamps, max = PLANT_MANAGER_MAX_POIN
   };
 };
 
+// Home Assistant's frontend can replace window.customElements with a scoped
+// registry polyfill after this script ran (cached, it may run first): Lovelace
+// then asks the new registry, never finds the card and shows "Erreur de
+// configuration". Register again on the registry in place once the frontend,
+// then Lovelace, are loaded; the polyfill defines them on the native registry.
+function plantManagerDefine(tag, component) {
+  const define = () => {
+    const registry = globalThis.customElements;
+    if (!registry.get(tag)) registry.define(tag, component);
+  };
+  define();
+  for (const ready of ["home-assistant", "ha-panel-lovelace"]) {
+    customElements.whenDefined?.(ready)?.then(define);
+  }
+}
+
 class PlantManagerCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("plant-manager-card-editor");
@@ -814,9 +830,7 @@ class PlantManagerCard extends HTMLElement {
   }
 }
 
-if (!customElements.get("plant-manager-card")) {
-  customElements.define("plant-manager-card", PlantManagerCard);
-}
+plantManagerDefine("plant-manager-card", PlantManagerCard);
 
 const plantManagerCardSchema = (T) => {
   const options = (values) => Object.entries(values).map(([value, label]) => ({ value, label }));
@@ -881,9 +895,7 @@ class PlantManagerCardEditor extends HTMLElement {
   }
 }
 
-if (!customElements.get("plant-manager-card-editor")) {
-  customElements.define("plant-manager-card-editor", PlantManagerCardEditor);
-}
+plantManagerDefine("plant-manager-card-editor", PlantManagerCardEditor);
 
 window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === "plant-manager-card")) {
