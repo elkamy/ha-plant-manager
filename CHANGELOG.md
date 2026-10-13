@@ -1,5 +1,10 @@
 # Journal des modifications
 
+## [1.7.2] — 2026-10-13
+
+### Corrigé
+- Les cartes ne restent plus en « Erreur de configuration » à l'ouverture d'un tableau de bord. Chargées depuis le cache, elles pouvaient s'enregistrer avant que l'interface de Home Assistant ne remplace son registre d'éléments, qui ne les connaissait alors pas. Elles s'enregistrent de nouveau une fois l'interface chargée. La correction de la 1.7.1 visait une mauvaise cause.
+
 ## [1.7.1] — 2026-10-04
 
 ### Ajouté
